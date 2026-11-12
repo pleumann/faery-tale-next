@@ -74,3 +74,28 @@ uint8_t input_key(void)
     }
     return result;
 }
+
+/* Kempston mouse: X 0xFBDF, Y 0xFFDF (counts up when moving up), buttons 0xFADF
+   (bit 1 left, bit 0 right, low active). Absent mouse reads 0xFF everywhere. */
+uint16_t mouse_x = 160;
+uint8_t mouse_y = 200, mouse_buttons, mouse_present;
+static uint8_t last_x, last_y, mouse_init;
+
+void mouse_update(void)
+{
+    uint8_t x = z80_inp(0xFBDF), y = z80_inp(0xFFDF), b = z80_inp(0xFADF);
+    int16_t nx, ny;
+    if (!mouse_init) { last_x = x; last_y = y; mouse_init = 1; return; }
+    if (x != last_x || y != last_y) mouse_present = 1;
+    nx = (int16_t)mouse_x + (int8_t)(x - last_x);
+    ny = (int16_t)mouse_y - (int8_t)(y - last_y);
+    last_x = x; last_y = y;
+    if (nx < 0) nx = 0;
+    if (nx > 319) nx = 319;
+    if (ny < 28) ny = 28;
+    if (ny > 231) ny = 231;
+    mouse_x = (uint16_t)nx;
+    mouse_y = (uint8_t)ny;
+    mouse_buttons = (b & 0x02 ? 0 : MOUSE_LEFT) | (b & 0x01 ? 0 : MOUSE_RIGHT);
+    if (b != 0xFF && mouse_buttons) mouse_present = 1;
+}

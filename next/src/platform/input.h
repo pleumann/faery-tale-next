@@ -22,4 +22,11 @@ uint8_t input_key(void);
 /* 1 if the key in the given half-row port (e.g. 0xDFFE) and bit mask is pressed. */
 uint8_t key_down(uint16_t port, uint8_t mask);
 
+/* Kempston mouse, pointer in screen coordinates (0..319, 28..231) */
+#define MOUSE_LEFT  1
+#define MOUSE_RIGHT 2
+extern uint16_t mouse_x;
+extern uint8_t mouse_y, mouse_buttons, mouse_present;
+void mouse_update(void);
+
 #endif

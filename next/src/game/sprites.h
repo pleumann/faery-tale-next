@@ -11,6 +11,8 @@ void sprites_init(void);
 void sprites_palette(const uint16_t *rgb4, uint8_t pct);
 void sprites_draw(void);        /* compose all visible actors (patterns double buffered) */
 void sprites_flush(void);
-void sprites_hide(void);       /* write sprite attributes - right after the vblank */
+void sprites_hide(void);
+void pointer_init(void);
+void pointer_set(uint16_t x, uint8_t y, uint8_t visible);       /* write sprite attributes - right after the vblank */
 
 #endif

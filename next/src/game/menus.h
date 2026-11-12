@@ -14,6 +14,7 @@ struct inv_item {
 };
 
 void menu_key(uint8_t key);
+void menu_click(uint8_t slot);  /* left click on menu slot 0..11 */
 void print_options(void);
 void set_options(void);
 uint8_t paused(void);

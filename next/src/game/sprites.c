@@ -23,7 +23,7 @@
 #define NR_SPRITE_TRANSP    0x4B
 
 #define TRANSPARENT         SHAPE_TRANSPARENT   /* colour 31 */
-#define MAX_PATTERNS        32                  /* per half of the pattern memory */
+#define MAX_PATTERNS        31                  /* per half; pattern 63 is the mouse pointer */
 
 #define SLOT2 ((uint8_t *)0x4000)
 
@@ -55,10 +55,11 @@ void sprites_init_b(void)
     nextreg(NR_SPRITE_TRANSP, TRANSPARENT);
     nextreg(NR_SPRITE_CTRL, 0x23);      /* visible, over border, clip in over-border mode, SLU */
     nextreg(NR_CLIP_CTRL, 0x02);
-    nextreg(NR_CLIP_SPRITE, VIEW_X / 2);
-    nextreg(NR_CLIP_SPRITE, (VIEW_X + VIEW_W - 1) / 2);
+    /* playfield and panel (for the mouse pointer); actors are cut to the playfield in emit() */
+    nextreg(NR_CLIP_SPRITE, 0);
+    nextreg(NR_CLIP_SPRITE, 159);
     nextreg(NR_CLIP_SPRITE, (uint8_t)VIEW_Y);
-    nextreg(NR_CLIP_SPRITE, (uint8_t)(VIEW_Y + VIEW_H - 1));
+    nextreg(NR_CLIP_SPRITE, 231);
 
     h = file_open("FTA/SHADOW.DAT");
     if (h != FILE_ERROR) {
@@ -216,6 +217,15 @@ static void emit(int16_t rx, int16_t ry, uint8_t rows)
                 return;
             n = pat_base + npat++;
             src = buf + ((uint16_t)(cy * bw + cx) << 8);
+            /* cut what lies outside the playfield (the clip window includes the panel) */
+            if (sx < VIEW_X || sx + 15 >= VIEW_X + VIEW_W || sy < VIEW_Y || sy + 15 >= VIEW_Y + VIEW_H) {
+                uint8_t *c = (uint8_t *)src, px, py;
+                for (py = 0; py < 16; py++)
+                    for (px = 0; px < 16; px++, c++)
+                        if (sx + px < VIEW_X || sx + px >= VIEW_X + VIEW_W ||
+                            sy + py < VIEW_Y || sy + py >= VIEW_Y + VIEW_H)
+                            *c = TRANSPARENT;
+            }
             IO_SPRITE_SLOT = n;
             for (uint16_t b = 0; b < 256; b++)
                 IO_SPRITE_PATTERN = src[b];
@@ -401,4 +411,46 @@ void sprites_hide_b(void)
     for (j = 0; j < last_sprites; j++)
         set_sprite(j, 0, 0, 0, 0);
     sprites_flush_b();
+}
+
+/* ---- the mouse pointer (fmain.c:465 _sprite_data: 16 lines of plane 0 / plane 1) ---- */
+
+static const uint32_t pointer_data[16] = {
+    0x80060000, 0x60010002, 0x40012000, 0x10030000,
+    0x08FE0001, 0x0581007F, 0x03000081, 0x06010101,
+    0x0C800201, 0x08410401, 0x08200401, 0x08110401,
+    0x080C0401, 0x880F0401, 0x98074400, 0x75560FFC };
+
+#define POINTER_SPRITE  127
+#define POINTER_PATTERN 63
+
+void pointer_init_b(void)
+{
+    static const uint16_t colors[3] = { 0xDB0, 0x740, 0xC70 };    /* textcolors 17-19 */
+    uint8_t y, x, i;
+    IO_SPRITE_SLOT = POINTER_PATTERN;
+    for (y = 0; y < 16; y++) {
+        uint16_t p0 = (uint16_t)(pointer_data[y] >> 16), p1 = (uint16_t)pointer_data[y];
+        for (x = 0; x < 16; x++) {
+            uint8_t v = ((p0 >> (15 - x)) & 1) | (((p1 >> (15 - x)) & 1) << 1);
+            IO_SPRITE_PATTERN = v ? 31 + v : TRANSPARENT;
+        }
+    }
+    nextreg(NR_PAL_CTRL, 0x20);
+    nextreg(NR_PAL_INDEX, 32);
+    for (i = 0; i < 3; i++) {
+        uint16_t c = colors[i];
+        uint8_t r = ((c >> 8) & 15) * 7 / 15, g = ((c >> 4) & 15) * 7 / 15, b = (c & 15) * 7 / 15;
+        nextreg(NR_PAL_VALUE9, (r << 5) | (g << 2) | (b >> 1));
+        nextreg(NR_PAL_VALUE9, b & 1);
+    }
+}
+
+void pointer_set_b(uint16_t x, uint8_t y, uint8_t visible)
+{
+    IO_SPRITE_SLOT = POINTER_SPRITE;
+    IO_SPRITE_ATTRIBUTE = (uint8_t)x;
+    IO_SPRITE_ATTRIBUTE = y;
+    IO_SPRITE_ATTRIBUTE = (uint8_t)(x >> 8) & 1;
+    IO_SPRITE_ATTRIBUTE = (visible ? 0x80 : 0) | POINTER_PATTERN;
 }

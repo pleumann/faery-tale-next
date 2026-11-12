@@ -91,6 +91,10 @@ void sprites_palette(const uint16_t *rgb4, uint8_t pct) { BANK_ENTER(PAGE_DRAW);
 void sprites_draw(void) { BANK_ENTER(PAGE_DRAW); sprites_draw_b(); BANK_LEAVE(); }
 void sprites_flush(void) { BANK_ENTER(PAGE_DRAW); sprites_flush_b(); BANK_LEAVE(); }
 void sprites_hide_b(void);
+void pointer_init_b(void);
+void pointer_set_b(uint16_t x, uint8_t y, uint8_t visible);
+void pointer_init(void) { BANK_ENTER(PAGE_DRAW); pointer_init_b(); BANK_LEAVE(); }
+void pointer_set(uint16_t x, uint8_t y, uint8_t v) { BANK_ENTER(PAGE_DRAW); pointer_set_b(x, y, v); BANK_LEAVE(); }
 void sprites_hide(void) { BANK_ENTER(PAGE_DRAW); sprites_hide_b(); BANK_LEAVE(); }
 
 void menu_key_b(uint8_t key);
@@ -101,6 +105,8 @@ void menus_start_b(void);
 void show_inventory_b(void);
 void get_turtle_b(void);
 void menu_key(uint8_t key) { BANK_ENTER(PAGE_MENU); menu_key_b(key); BANK_LEAVE(); }
+void menu_click_b(uint8_t slot);
+void menu_click(uint8_t slot) { BANK_ENTER(PAGE_MENU); menu_click_b(slot); BANK_LEAVE(); }
 void print_options(void) { BANK_ENTER(PAGE_MENU); print_options_b(); BANK_LEAVE(); }
 void set_options(void) { BANK_ENTER(PAGE_MENU); set_options_b(); BANK_LEAVE(); }
 uint8_t paused(void) { uint8_t r; BANK_ENTER(PAGE_MENU); r = paused_b(); BANK_LEAVE(); return r; }

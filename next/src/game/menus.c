@@ -648,6 +648,30 @@ void menu_key_b(uint8_t key)
     }
 }
 
+/* a left click on menu slot j (fmain.c:1300) */
+void menu_click_b(uint8_t j)
+{
+    uint8_t atype, notpause = !(menus[GAME].enabled[5] & 1);
+    int8_t h;
+    if (j > 11) return;
+    h = real_options[j];
+    if (h < 0 || h >= menus[cmode].num) return;
+    hit = (uint8_t)h;
+    hitgo = TRUE;
+    atype = menus[cmode].enabled[hit] & 0xfc;
+    if (atype == 4) {
+        menus[cmode].enabled[hit] ^= 1;
+        propt(j, menus[cmode].enabled[hit] & 1);
+        do_option(hit);
+    }
+    else if (atype == 8) { propt(j, 1); do_option(hit); }
+    else if (atype == 12) { menus[cmode].enabled[hit] |= 1; propt(j, 1); do_option(hit); }
+    else if (!notpause) ;
+    else if (atype == 0 && hit < 5) { cmode = hit; print_options_b(); return; }
+    else propt(j, menus[cmode].enabled[hit] & 1);
+    print_options_b();
+}
+
 uint8_t paused_b(void)
 {
     return menus[GAME].enabled[5] & 1;

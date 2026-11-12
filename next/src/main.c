@@ -102,6 +102,7 @@ void main(void)
     ui_init();
     audio_init();
     font_load();
+    pointer_init();
 
     for (;;) {                          /* one game per pass */
 #if defined(DEMO) || defined(TEST_DOOR) || defined(TEST_KEYS) || defined(DEBUG_DUMP)
@@ -134,6 +135,27 @@ void main(void)
         if (d & IN_DOWN) jy = 1;
         dir = com2[4 + 3 * jy + jx];
         fire = (d & IN_FIRE) ? 1 : 0;
+
+        /* mouse (fmain.c decode_mouse / HandlerInterface): click on menu entries, hold
+           the left button on the compass to walk, the right button to fight */
+        mouse_update();
+        if (mouse_present) {
+            static uint8_t last_buttons;
+            uint8_t pressed = mouse_buttons & ~last_buttons;
+            last_buttons = mouse_buttons;
+            if (mouse_y >= 168) {
+                uint8_t row = (mouse_y - 168) >> 3;
+                if ((pressed & MOUSE_LEFT) && row < 6) {
+                    if (mouse_x >= 212 && mouse_x < 236) { menu_click(row * 2); demo_on = 0; }
+                    else if (mouse_x >= 240 && mouse_x < 264) { menu_click(row * 2 + 1); demo_on = 0; }
+                }
+                if ((mouse_buttons & MOUSE_LEFT) && mouse_x >= 283 && mouse_x < 308 &&
+                    mouse_y >= 183 && mouse_y < 207)
+                    dir = com2[4 + 3 * ((mouse_y - 183) / 8 - 1) + ((mouse_x - 283) / 8 - 1)];
+            }
+            if (mouse_buttons & MOUSE_RIGHT) fire = 1;
+            pointer_set(mouse_x, mouse_y, 1);
+        }
         if (dir != 9 || fire)
             demo_on = 0;
         if (demo_on) {
