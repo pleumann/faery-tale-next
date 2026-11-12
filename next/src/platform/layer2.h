@@ -11,4 +11,6 @@ void layer2_clip(uint16_t x1, uint8_t y1, uint16_t x2, uint8_t y2);
 /* Palette in Amiga RGB4 words; pct 0..100 per channel like fade_page() in fmain2.c */
 void palette_load_rgb4(uint8_t first, const uint16_t *rgb4, uint8_t count, uint8_t pct);
 
+extern uint8_t palette_dirty;   /* set by every palette load (fade_page cache) */
+
 #endif

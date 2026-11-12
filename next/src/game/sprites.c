@@ -134,21 +134,21 @@ static void apply_shadow(uint8_t n, uint16_t tx, uint16_t ty, uint16_t wx, uint1
     int16_t x0 = (int16_t)((tx << 4) - wx);
     int16_t y0 = (int16_t)((ty << 5) - wy);
     int16_t w = bw * 16, h = bh * 16;
-    uint8_t row, px;
+    uint8_t row, px, first = 0, last = 32;
 
+    if (y0 < 0) first = (uint8_t)(-y0);
+    if (y0 + 32 > h) last = (uint8_t)(h - y0);
+    if (first >= last || x0 <= -16 || x0 >= w)
+        return;
     fetch_shadow(n);
-    for (row = 0; row < 32; row++) {
-        int16_t y = y0 + row;
-        uint16_t bits;
-        if (y < 0 || y >= h)
-            continue;
-        bits = ((uint16_t)shadow[row * 2] << 8) | shadow[row * 2 + 1];
-        if (!bits)
-            continue;
-        for (px = 0; px < 16; px++) {
-            int16_t x = x0 + px;
-            if (x >= 0 && x < w && (bits & (0x8000 >> px)))
-                *PIX(x, y) = TRANSPARENT;
+    for (row = first; row < last; row++) {
+        uint8_t y = (uint8_t)(y0 + row);
+        uint8_t *rowp = buf + ((uint16_t)((y >> 4) * bw) << 8) + ((y & 15) << 4);
+        uint16_t bits = ((uint16_t)shadow[row * 2] << 8) | shadow[row * 2 + 1];
+        int16_t x = x0;
+        for (px = 0; bits; px++, x++, bits <<= 1) {
+            if ((bits & 0x8000) && x >= 0 && x < w)
+                rowp[((uint16_t)(x >> 4) << 8) + (x & 15)] = TRANSPARENT;
         }
     }
 }
@@ -198,6 +198,17 @@ static void set_sprite(uint8_t slot, uint16_t x, uint8_t y, uint8_t pat, uint8_t
     a->a3 = (visible ? 0x80 : 0) | (pat & 0x3F);
 }
 
+/* 256 bytes to the sprite pattern port (0x5B, decoded on the low byte) */
+static void upload256(const uint8_t *src) __z88dk_fastcall __naked
+{
+    (void)src;
+    __asm
+        ld  bc, 0x005B
+        otir
+        ret
+    __endasm;
+}
+
 /* Upload the buffer's cells and place them at playfield position (rx, ry). */
 static void emit(int16_t rx, int16_t ry, uint8_t rows)
 {
@@ -227,8 +238,7 @@ static void emit(int16_t rx, int16_t ry, uint8_t rows)
                             *c = TRANSPARENT;
             }
             IO_SPRITE_SLOT = n;
-            for (uint16_t b = 0; b < 256; b++)
-                IO_SPRITE_PATTERN = src[b];
+            upload256(src);
             set_sprite(next_sprite++, (uint16_t)sx, (uint8_t)sy, n, 1);
         }
     }

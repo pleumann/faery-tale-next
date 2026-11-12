@@ -43,8 +43,11 @@ static uint8_t chan3(uint8_t c4, uint8_t pct)
     return (uint8_t)((v * 7 + 750) / 1500);
 }
 
+uint8_t palette_dirty = 1;
+
 void palette_load_rgb4(uint8_t first, const uint16_t *rgb4, uint8_t count, uint8_t pct)
 {
+    palette_dirty = 1;
     nextreg(NR_PAL_CTRL, 0x10);         /* write Layer 2 first palette */
     nextreg(NR_PAL_INDEX, first);
     while (count--) {

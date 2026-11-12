@@ -136,7 +136,8 @@ int16_t calc_dist(uint8_t a, uint8_t b)
     if (y < 0) y = -y;
     if (x > y + y) return x;
     if (y > x + x) return y;
-    return (int16_t)(((int32_t)(x + y) * 5) / 7);
+    if (x + y > 6000) return x + y;             /* far away anyway; keeps the math 16 bit */
+    return (int16_t)((uint16_t)(x + y) * 5 / 7);
 }
 
 /* fmain2.c:322 */

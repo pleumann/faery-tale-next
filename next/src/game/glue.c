@@ -266,6 +266,15 @@ void fade_page(int16_t r, int16_t g, int16_t b, uint8_t limit)
     if (r > 100) r = 100;
     if (g > 100) g = 100;
     if (b > 100) b = 100;
+    {   /* the day/night fade calls this often with the same values */
+        static int16_t lr = -1000, lg, lb;
+        static uint8_t ll, llt, lreg;
+        static uint16_t l31;
+        if (!palette_dirty && r == lr && g == lg && b == lb && limit == ll && (light_timer != 0) == llt &&
+            pagecolors[31] == l31 && region_num == lreg)
+            return;
+        lr = r; lg = g; lb = b; ll = limit; llt = light_timer != 0; l31 = pagecolors[31]; lreg = region_num;
+    }
     if (limit) {
         if (r < 10) r = 10;                     /* night limits */
         if (g < 25) g = 25;
@@ -295,6 +304,7 @@ void fade_page(int16_t r, int16_t g, int16_t b, uint8_t limit)
     }
     palette_load_rgb4(0, fader, 32, 100);
     sprites_palette(fader, 100);
+    palette_dirty = 0;
 }
 
 /* fmain2.c:1653 */

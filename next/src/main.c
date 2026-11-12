@@ -59,12 +59,23 @@ static const uint8_t com2[9] = { 0, 1, 2, 7, 9, 3, 6, 5, 4 };
 #include <arch/zxn/esxdos.h>
 extern uint8_t dbg_frame[20];
 static uint8_t dbg_h = 0xFF;
+/* time stamps in scan lines: frames * 311 + current line (NR 0x1E/0x1F) */
+static uint16_t tstamp[10];
+static uint16_t now(void)
+{
+    uint16_t f = frames;
+    uint16_t line = ((uint16_t)(nextreg_read(0x1E) & 1) << 8) | nextreg_read(0x1F);
+    return f * 311 + line;
+}
+#define TS(n) tstamp[n] = now()
 static void debug_dump(void)
 {
     if (dbg_h == 0xFF) {
         mmu_set(0, 0xFF);
         dbg_h = esx_f_open("DEBUG.BIN", ESX_MODE_W | ESX_MODE_OPEN_CREAT_TRUNC);
     }
+    esx_f_write(dbg_h, (void *)&frames, 2);
+    esx_f_write(dbg_h, tstamp, sizeof(tstamp));
     esx_f_write(dbg_h, &cycle, 1);
     esx_f_write(dbg_h, &anix, 1);
     esx_f_write(dbg_h, anim_list, sizeof(anim_list));
@@ -204,8 +215,14 @@ void main(void)
         }
         if (viewstatus == 99) view_invalidate();
 
+#ifdef DEBUG_DUMP
+        TS(0);
+#endif
         hero_control(dir, fire);
         actors_update();
+#ifdef DEBUG_DUMP
+        TS(1);
+#endif
         door_check();
 
         last_region = region_num;
@@ -222,13 +239,27 @@ void main(void)
         }
         img_x = map_x >> 4;
         img_y = map_y >> 5;
-
+#ifdef DEBUG_DUMP
+        TS(2);
+#endif
         combat_update();
+#ifdef DEBUG_DUMP
+        TS(3);
+#endif
         actors_sort();
+#ifdef DEBUG_DUMP
+        TS(4);
+#endif
         witch_undo();
         view_update();
         witch_draw();
+#ifdef DEBUG_DUMP
+        TS(5);
+#endif
         sprites_draw();
+#ifdef DEBUG_DUMP
+        TS(6);
+#endif
 
         /* 25 Hz game loop; scroll registers and sprite attributes change in the vblank */
         next_frame += 2;
@@ -238,8 +269,8 @@ void main(void)
         view_scroll();
         sprites_flush();
 #ifdef DEBUG_DUMP
-        if (frames > 500 && frames < 560) debug_dump();
-        if (frames >= 560 && dbg_h != 0xFF) { esx_f_close(dbg_h); dbg_h = 0xFE; }
+        if (frames > 500 && frames < 1500) debug_dump();
+        if (frames >= 1500 && dbg_h != 0xFF && dbg_h != 0xFE) { esx_f_close(dbg_h); dbg_h = 0xFE; }
 #endif
         cycle++;
     }
