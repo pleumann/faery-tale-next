@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 /* Physical 8K pages holding the current region's data */
-#define TILE_PAGE       40      /* 256 tiles x 512 bytes = 16 pages (40..55) */
+extern uint8_t tile_pages[16];  /* page of each group of 16 tiles of the current region */
 #define SECTOR_PAGE     56      /* 32K sector data = 4 pages (56..59) */
 #define MAP_PAGE        60      /* 4K region map at 0, terrain (2 x 512) at 4096 */
 #define MAP_TERRA_OFF   4096
@@ -18,6 +18,7 @@ extern uint8_t region_num, new_region;
 extern uint16_t xreg, yreg;     /* region origin in sectors */
 
 void world_init(void);
+void world_prefetch(void);      /* once per frame: load ahead the neighbour region's tiles */
 void load_new_region(void);     /* loads new_region if set; returns with ROM in slot 0/1 */
 void gen_mini(void);            /* choose region from map position, load if changed */
 

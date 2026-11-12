@@ -3,6 +3,8 @@
 #include "../platform/files.h"
 #include "assets.h"
 #include "world.h"
+#include "state.h"
+#include "actors.h"
 
 uint16_t map_x, map_y;
 uint8_t region_num = NO_REGION, new_region = NO_REGION;
@@ -33,13 +35,145 @@ static struct need current_loads;
 
 #define SLOT1 ((uint8_t *)0x2000)
 
+static void cache_flush(void);
+
 void world_init(void)
 {
     uint8_t i;
+    cache_flush();
     for (i = 0; i < 4; i++)
         current_loads.image[i] = 0;
     current_loads.terra1 = current_loads.terra2 = 0xFF;
     current_loads.sector = current_loads.region = 0;
+}
+
+/* ---- tile bank cache ----
+   8 slots of 32K (4 pages each) for the 17 tile banks; a region needs 4 of them. Banks of
+   the neighbouring region are loaded ahead in 2K pieces while the hero walks towards it,
+   so crossing a region border only loads the small map/terrain data. */
+
+#define CACHE_SLOTS 8
+#define NO_BANK     0xFF
+
+static const uint8_t slot_pages[CACHE_SLOTS][4] = {
+    { 40, 41, 42, 43 }, { 44, 45, 46, 47 }, { 48, 49, 50, 51 }, { 52, 53, 54, 55 },
+    {  6,  7,  8,  9 }, { 90, 91, 92, 93 }, {  2,  3, 12, 13 }, { 16, 17, 94, 95 } };
+static uint8_t slot_bank[CACHE_SLOTS] = { NO_BANK, NO_BANK, NO_BANK, NO_BANK,
+                                          NO_BANK, NO_BANK, NO_BANK, NO_BANK };
+uint8_t tile_pages[16];                 /* page of each group of 16 tiles of the region */
+
+static uint8_t pf_bank = NO_BANK, pf_slot, pf_h = FILE_ERROR;
+static uint16_t pf_off;
+
+static void cache_flush(void)
+{
+    uint8_t s;
+    for (s = 0; s < CACHE_SLOTS; s++) slot_bank[s] = NO_BANK;
+    pf_bank = NO_BANK;
+}
+
+static uint8_t bank_of(uint16_t block) { return (uint8_t)((block - TILE_BANK_FIRST_BLOCK) / 40); }
+
+static uint8_t find_slot(uint8_t bank)
+{
+    uint8_t s;
+    for (s = 0; s < CACHE_SLOTS; s++)
+        if (slot_bank[s] == bank) return s;
+    return NO_BANK;
+}
+
+/* a slot that holds none of the banks in `keep` (4 bank numbers, NO_BANK allowed) */
+static uint8_t free_slot(const uint8_t *keep, const uint8_t *keep2)
+{
+    uint8_t s, k, ok;
+    for (s = 0; s < CACHE_SLOTS; s++) {
+        if (s == pf_slot && pf_bank != NO_BANK) continue;
+        ok = 1;
+        for (k = 0; k < 4; k++)
+            if (slot_bank[s] != NO_BANK && (slot_bank[s] == keep[k] || (keep2 && slot_bank[s] == keep2[k])))
+                ok = 0;
+        if (ok) return s;
+    }
+    return 0;
+}
+
+static void pf_chunk(void)
+{
+    if (pf_h == FILE_ERROR) pf_h = file_open("FTA/TILES.DAT");
+    file_seek(pf_h, (uint32_t)pf_bank * TILE_BANK_BYTES + pf_off);
+    file_read_at(pf_h, slot_pages[pf_slot][pf_off >> 13], pf_off & 0x1FFF, 2048);
+    pf_off += 2048;
+    if (pf_off == 32768U) {                 /* the whole bank is in */
+        slot_bank[pf_slot] = pf_bank;
+        pf_bank = NO_BANK;
+    }
+}
+
+static void region_banks(const struct need *nd, uint8_t *b)
+{
+    uint8_t i;
+    for (i = 0; i < 4; i++) b[i] = bank_of(nd->image[i]);
+}
+
+/* make the 4 banks of a region resident and point tile_pages at them */
+static void tiles_for_region(const struct need *nd)
+{
+    uint8_t want[4], i, k, s;
+    region_banks(nd, want);
+    for (i = 0; i < 4; i++) {
+        s = find_slot(want[i]);
+        if (s == NO_BANK) {
+            if (pf_bank == want[i]) {       /* being loaded ahead: finish it now */
+                while (pf_bank != NO_BANK) pf_chunk();
+                s = find_slot(want[i]);
+            } else {
+                uint8_t h;
+                s = free_slot(want, 0);
+                slot_bank[s] = NO_BANK;
+                h = file_open("FTA/TILES.DAT");
+                file_seek(h, (uint32_t)want[i] * TILE_BANK_BYTES);
+                for (k = 0; k < 4; k++)
+                    file_read_pages(h, slot_pages[s][k], 8192);
+                file_close(h);
+                slot_bank[s] = want[i];
+            }
+        }
+        for (k = 0; k < 4; k++)
+            tile_pages[i * 4 + k] = slot_pages[s][k];
+    }
+}
+
+/* Called once per frame: load 2K of a tile bank the neighbouring region will need. */
+void world_prefetch(void)
+{
+    uint8_t xs, ys, xr, yr, target, want[4], cur[4], i;
+
+    if (region_num > 7 || new_region < NO_REGION) return;
+    if (pf_bank != NO_BANK) { pf_chunk(); return; }
+
+    xs = hero_x >> 8;
+    ys = hero_y >> 8;
+    xr = (xs >> 6) & 1;
+    yr = (ys >> 5) & 3;
+    if ((xs & 63) > 52 || (xs & 63) < 12) xr ^= 1;          /* near a side border */
+    else if ((ys & 31) > 24 && yr < 3) yr++;                /* near the next band */
+    else if ((ys & 31) < 8 && yr > 0) yr--;
+    else return;
+    target = xr + yr + yr;
+    if (target == region_num) return;
+
+    region_banks(&file_index[target], want);
+    region_banks(&file_index[region_num], cur);
+    for (i = 0; i < 4; i++) {
+        if (find_slot(want[i]) == NO_BANK) {
+            pf_slot = free_slot(cur, want);
+            slot_bank[pf_slot] = NO_BANK;
+            pf_bank = want[i];
+            pf_off = 0;
+            pf_chunk();
+            return;
+        }
+    }
 }
 
 void load_new_region(void)
@@ -75,20 +209,17 @@ void load_new_region(void)
         current_loads.terra1 = nd->terra1;
         current_loads.terra2 = nd->terra2;
     }
-    h = 0xFF;
-    for (i = 0; i < 4; i++) {
-        if (nd->image[i] != current_loads.image[i]) {
-            if (h == 0xFF)
-                h = file_open("FTA/TILES.DAT");
-            file_seek(h, (uint32_t)((nd->image[i] - TILE_BANK_FIRST_BLOCK) / 40) * TILE_BANK_BYTES);
-            file_read_pages(h, TILE_PAGE + i * 4, TILE_BANK_BYTES);
-            current_loads.image[i] = nd->image[i];
-        }
-    }
-    if (h != 0xFF)
-        file_close(h);
+    for (i = 0; i < 4; i++)
+        current_loads.image[i] = nd->image[i];
+    tiles_for_region(nd);
 
-    /* TODO (M4): desert gate patch, fmain.c:3594, needs stuff[STATBASE] */
+    /* fmain.c:3594 - the desert gate stays closed until the hero has 5 statues */
+    if (new_region == 4 && stuff[STATBASE] < 5) {
+        uint16_t m = 11 * 128 + 26;
+        mmu_set(1, MAP_PAGE);
+        SLOT1[m] = SLOT1[m + 1] = SLOT1[m + 128] = SLOT1[m + 129] = 254;
+        mmu_set(1, 0xFF);
+    }
 
     region_num = new_region;
     new_region = NO_REGION;

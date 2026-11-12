@@ -147,6 +147,8 @@ void intro_b(void)
 {
     static uint16_t black[32];
     skipp = 0;
+    world_init();                       /* the brushes use cached tile pages */
+    region_num = NO_REGION;
     ui_panel(0);
     sprites_hide();
     view_clear();

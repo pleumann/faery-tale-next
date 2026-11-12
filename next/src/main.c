@@ -134,7 +134,11 @@ void main(void)
     hero_y = anim_list[0].abs_y = 0x3dc0 + 20;
     demo_on = 0;
 #endif
+#ifdef TEST_REGION
+    xfer(16700, 15500, TRUE);           /* test: walk west across the region 3/2 border */
+#else
     if (demo_on) xfer(21600, 15500, TRUE);  /* demo: stone ring */
+#endif
     next_frame = frames;
 
     while (!quitflag) {
@@ -170,6 +174,9 @@ void main(void)
         }
         if (dir != 9 || fire)
             demo_on = 0;
+#ifdef TEST_REGION
+        if (demo_on) { dir = 7; fire = 0; } else
+#endif
         if (demo_on) {
             dir = demo[demo_step][0];
             fire = (nearest_person && perdist < 30 && anim_list[nearest_person].type == ENEMY);
@@ -181,7 +188,9 @@ void main(void)
             }
         }
 
+#ifndef TEST_REGION
         if (demo_on && cycle == 60) debug_encounter();
+#endif
         if (key_down(0xFDFE, 0x04) && key_down(0x7FFE, 0x02)) debug_encounter();  /* SYM+D: ogres (test) */
 
         {
@@ -243,6 +252,7 @@ void main(void)
 #ifdef DEBUG_DUMP
         TS(2);
 #endif
+        world_prefetch();
         combat_update();
 #ifdef DEBUG_DUMP
         TS(3);

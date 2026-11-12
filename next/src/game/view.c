@@ -38,7 +38,7 @@ static void draw_tile(uint16_t imx, uint16_t imy)
     uint8_t *d;
     uint8_t c;
 
-    mmu_set(2, TILE_PAGE + (t >> 4));
+    mmu_set(2, tile_pages[t >> 4]);
     mmu_set(3, L2_PAGE_A + (bx >> 5));
     s = SRC + ((uint16_t)(t & 15) << 9);
     d = DST + ((bx & 31) << 8) + by;
