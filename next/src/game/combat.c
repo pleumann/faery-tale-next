@@ -6,6 +6,7 @@
 #include "state.h"
 #include "actors.h"
 #include "banked.h"
+#include "../platform/hw.h"
 
 /* fmain.c:2238-2301 - melee and missiles */
 void combat_update_b(void)
@@ -132,4 +133,105 @@ void actors_sort_b(void)
             if (u2 < u1) { anim_index[j - 1] = k2; anim_index[j] = k1; }
         }
     }
+}
+
+/* ---- the witch's gaze (fmain2.c witch_fx, fmain.c:2367-2376) ---- */
+
+/* fmain2.c:889 - 64 points: (x, y) far and (x, y) near, around a circle */
+static const int8_t witchpoints[256] = {
+0,100,0,10,     9,99,0,9,         19,98,1,9,        29,95,2,9,
+38,92,3,9,        47,88,4,8,        55,83,5,8,        63,77,6,7,
+70,70,7,7,        77,63,7,6,        83,55,8,5,        88,47,8,4,
+92,38,9,3,        95,29,9,2,        98,19,9,1,        99,9,9,0,
+100,0,10,0,        99,-10,9,-1,    98,-20,9,-2,    95,-30,9,-3,
+92,-39,9,-4,    88,-48,8,-5,    83,-56,8,-6,    77,-64,7,-7,
+70,-71,7,-8,    63,-78,6,-8,    55,-84,5,-9,    47,-89,4,-9,
+38,-93,3,-10,    29,-96,2,-10,    19,-99,1,-10,    9,-100,0,-10,
+0,-100,0,-10,    -10,-100,-1,-10,-20,-99,-2,-10,    -30,-96,-3,-10,
+-39,-93,-4,-10,    -48,-89,-5,-9,    -56,-84,-6,-9,    -64,-78,-7,-8,
+-71,-71,-8,-8,    -78,-64,-8,-7,    -84,-56,-9,-6,    -89,-48,-9,-5,
+-93,-39,-10,-4,    -96,-30,-10,-3,    -99,-20,-10,-2,    -100,-10,-10,-1,
+-100,-1,-10,-1,    -100,9,-10,0,    -99,19,-10,1,    -96,29,-10,2,
+-93,38,-10,3,    -89,47,-9,4,    -84,55,-9,5,    -78,63,-8,6,
+-71,70,-8,7,    -64,77,-7,7,    -56,83,-6,8,    -48,88,-5,8,
+-39,92,-4,9,    -30,95,-3,9,    -20,98,-2,9,    -10,99,-1,9,
+};
+
+static uint8_t witchindex;
+static int8_t wdir = 1;
+static int16_t s1, s2;
+static uint8_t drawn;
+static uint16_t wq[8];                  /* the drawn outline in world coordinates */
+
+#define L2W ((uint8_t *)0x6000)
+
+static void xor_pixel(uint16_t wx, uint16_t wy)
+{
+    uint16_t bx = wx % 320;
+    uint8_t by = (uint8_t)wy;
+    mmu_set(3, L2_PAGE_A + (bx >> 5));
+    L2W[((bx & 31) << 8) + by] ^= 31;   /* COMPLEMENT on 5 bitplanes */
+}
+
+static void xor_line(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
+{
+    int16_t dx = (int16_t)(x1 - x0), dy = (int16_t)(y1 - y0), sx = 1, sy = 1, err, e2;
+    if (dx < 0) { dx = -dx; sx = -1; }
+    if (dy < 0) { dy = -dy; sy = -1; }
+    dy = -dy;
+    err = dx + dy;
+    for (;;) {
+        xor_pixel(x0, y0);
+        if (x0 == x1 && y0 == y1) break;
+        e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x0 += sx; }
+        if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+}
+
+static void outline(void)
+{
+    xor_line(wq[0], wq[1], wq[2], wq[3]);
+    xor_line(wq[2], wq[3], wq[6], wq[7]);
+    xor_line(wq[6], wq[7], wq[4], wq[5]);
+    xor_line(wq[4], wq[5], wq[0], wq[1]);
+    mmu_set(3, 11);
+}
+
+/* before the playfield is updated: remove last frame's outline */
+void witch_undo_b(void)
+{
+    if (drawn) { outline(); drawn = 0; }
+}
+
+/* after the update: hit test and new outline */
+void witch_draw_b(void)
+{
+    uint16_t wx, wy;
+    const int8_t *w;
+    int16_t dx, dy, dx1, dy1;
+
+    if (rand4() == 0) wdir = (s1 > 0) ? 1 : -1;
+    witchindex += wdir;
+    if (!witchflag) return;
+
+    wx = anim_list[2].abs_x;
+    wy = anim_list[2].abs_y - 15;
+    w = witchpoints + (uint8_t)((witchindex + 63) * 4);
+    wq[0] = wx + w[0]; wq[1] = wy + w[1]; wq[2] = wx + w[2]; wq[3] = wy + w[3];
+    w = witchpoints + (uint8_t)((witchindex + 1) * 4);
+    wq[4] = wx + w[0]; wq[5] = wy + w[1]; wq[6] = wx + w[2]; wq[7] = wy + w[3];
+
+    dx = (int16_t)(wq[2] - wq[0]); dy = (int16_t)(wq[3] - wq[1]);
+    dx1 = (int16_t)(hero_x - wq[0]); dy1 = (int16_t)(hero_y - wq[1]);
+    s1 = dx * dy1 - dy * dx1;
+    dx = (int16_t)(wq[6] - wq[4]); dy = (int16_t)(wq[7] - wq[5]);
+    dx1 = (int16_t)(hero_x - wq[4]); dy1 = (int16_t)(hero_y - wq[5]);
+    s2 = dx * dy1 - dy * dx1;
+
+    if (s1 > 0 && s2 < 0 && calc_dist(2, 0) < 100)
+        dohit(-1, 0, anim_list[2].facing, rand2() + 1);
+
+    outline();
+    drawn = 1;
 }

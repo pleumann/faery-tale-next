@@ -11,6 +11,7 @@
 #include "menus.h"
 #include "audio.h"
 #include "intro.h"
+#include "placard.h"
 #include "view.h"
 
 enum cmodes { ITEMS = 0, MAGIC, TALK, BUY, GAME, SAVEX, KEYS, GIVE, USE, FILE_ };
@@ -413,8 +414,9 @@ pickup:
         case 10: if (riding > 1) return; freeze_timer += 100; break;
         case 9:
             if (region_num > 7) return;
-            /* TODO (M7): the magic map (bigdraw) */
-            print("(map not yet available)");
+            bigdraw();
+            viewstatus = 1;
+            prq(5);
             break;
         case 5:
             if (hero_sector == 144) {

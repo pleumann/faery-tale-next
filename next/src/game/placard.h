@@ -14,6 +14,7 @@ void placard_pen(uint8_t c);
 void placard_center(uint8_t on);
 void placard(void);             /* the meander border */
 void placard_clear(void);       /* inner area to colour 0 */
+void bigdraw(void);             /* the magic map on the playfield */
 void l2_pixel(int16_t x, int16_t y, uint8_t c);
 
 void delay(uint16_t ticks);     /* Amiga Delay(): 1/50 s ticks, music keeps playing */

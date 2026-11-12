@@ -234,3 +234,58 @@ void placard_clear_b(void)
             l2_pixel(x, y, 0);
     mmu_set(3, 11);
 }
+
+/* fsubs.asm _bigdraw + fmain.c:3311 - the magic map: 18 x 9 sectors around the hero,
+   one pixel per tile in the tile's map colour (terrain byte 3), every line doubled */
+void bigdraw_b(void)
+{
+    int16_t secx, secy, px, py;
+    uint8_t si, sj, tx, ty, sec, tile, col;
+
+    sprites_hide();
+    view_clear();
+    still_scroll();
+
+    secx = (int16_t)(map_x >> 8) - 9 - (int16_t)xreg;
+    secy = (int16_t)(map_y >> 8) - 4 - (int16_t)yreg;
+    if (secx < 32) secx += 128;
+    if (secx > 96) secx -= 128;
+    if (secy < 32) secy += 128;
+    if (secy > 96) secy -= 128;
+    if (secx < 0) secx = 0;
+    if (secx > 64 - 18) secx = 64 - 18;
+    if (secy < 0) secy = 0;
+    if (secy > 32 - 9) secy = 32 - 9;
+
+    for (sj = 0; sj < 9; sj++) {
+        for (si = 0; si < 18; si++) {
+            mmu_set(1, MAP_PAGE);
+            sec = SLOT1[(uint16_t)(secy + sj) * 128 + xreg + secx + si];
+            for (ty = 0; ty < 8; ty++) {
+                for (tx = 0; tx < 16; tx++) {
+                    uint16_t off = ((uint16_t)sec << 7) + (ty << 4) + tx;
+                    mmu_set(1, SECTOR_PAGE + (off >> 13));
+                    tile = SLOT1[off & 0x1FFF];
+                    mmu_set(1, MAP_PAGE);
+                    col = SLOT1[MAP_TERRA_OFF + ((uint16_t)tile << 2) + 3] & 31;
+                    px = si * 16 + tx;
+                    py = sj * 16 + ty * 2;
+                    l2_pixel(px, py, col);
+                    l2_pixel(px, py + 1, col);
+                }
+            }
+        }
+    }
+    mmu_set(1, 0xFF);
+    mmu_set(3, 11);
+
+    /* the hero's position */
+    pen_x = (int16_t)(hero_x >> 4) - ((secx + xreg) << 4) - 4;
+    pen_y = (int16_t)(hero_y >> 4) - ((secy + yreg) << 4) + 3;
+    if (pen_x > 0 && pen_x < 320 && pen_y > 0 && pen_y < 143) {
+        uint8_t old = pen;
+        pen = 31;
+        text("+", 1);
+        pen = old;
+    }
+}

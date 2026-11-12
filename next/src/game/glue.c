@@ -76,6 +76,10 @@ void actors_sort_b(void);
 void hero_control(uint8_t dir, uint8_t fire) { BANK_ENTER(PAGE_MOVE); hero_control_b(dir, fire); BANK_LEAVE(); }
 void actors_update(void) { BANK_ENTER(PAGE_MOVE); actors_update_b(); BANK_LEAVE(); }
 void combat_update(void) { BANK_ENTER(PAGE_COMBAT); combat_update_b(); BANK_LEAVE(); }
+void witch_undo_b(void);
+void witch_draw_b(void);
+void witch_undo(void) { BANK_ENTER(PAGE_COMBAT); witch_undo_b(); BANK_LEAVE(); }
+void witch_draw(void) { BANK_ENTER(PAGE_COMBAT); witch_draw_b(); BANK_LEAVE(); }
 void actors_sort(void) { BANK_ENTER(PAGE_COMBAT); actors_sort_b(); BANK_LEAVE(); }
 
 void sprites_init_b(void);
@@ -160,6 +164,8 @@ void placard_pen(uint8_t c) { BANK_ENTER(PAGE_PLACARD); placard_pen_b(c); BANK_L
 void placard_center_b(uint8_t on);
 void placard_center(uint8_t on) { BANK_ENTER(PAGE_PLACARD); placard_center_b(on); BANK_LEAVE(); }
 void placard(void) { BANK_ENTER(PAGE_PLACARD); placard_b(); BANK_LEAVE(); }
+void bigdraw_b(void);
+void bigdraw(void) { BANK_ENTER(PAGE_PLACARD); bigdraw_b(); BANK_LEAVE(); }
 void placard_clear(void) { BANK_ENTER(PAGE_PLACARD); placard_clear_b(); BANK_LEAVE(); }
 void placard_ssp(const char *s)
 {

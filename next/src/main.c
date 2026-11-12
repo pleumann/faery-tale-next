@@ -171,6 +171,10 @@ void main(void)
         /* inventory picture or pause: wait for the next key (fmain.c:1365) */
         if (viewstatus == 4 || viewstatus == 1 || paused()) {
             if (viewstatus == 4 || viewstatus == 1) sprites_hide();
+            if (viewstatus == 1) {                      /* the map: colour 31 flashes */
+                static const uint16_t white = 0xFFF, black = 0;
+                palette_load_rgb4(31, (frames & 16) ? &white : &black, 1, 100);
+            }
             next_frame = frames + 2;
             while ((int16_t)(frames - next_frame) < 0)
                 audio_update();
@@ -199,7 +203,9 @@ void main(void)
 
         combat_update();
         actors_sort();
+        witch_undo();
         view_update();
+        witch_draw();
         sprites_draw();
 
         /* 25 Hz game loop; scroll registers and sprite attributes change in the vblank */

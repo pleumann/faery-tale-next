@@ -68,6 +68,8 @@ void checkdead(uint8_t i, uint8_t dtype);
 void hero_control(uint8_t dir, uint8_t fire);   /* fmain.c:1384-1452 */
 void actors_update(void);                       /* fmain.c:1466-1865 */
 void combat_update(void);                       /* melee + missiles, fmain.c:2238-2301 */
-void actors_sort(void);                         /* missiles as objects, depth sort */
+void actors_sort(void);
+void witch_undo(void);                           /* fmain.c:2366 witch_fx */
+void witch_draw(void);                         /* missiles as objects, depth sort */
 
 #endif
