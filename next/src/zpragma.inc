@@ -8,3 +8,6 @@
 #pragma output CRT_ORG_PAGE_80 = 0x0000
 #pragma output CRT_ORG_PAGE_81 = 0x0000
 #pragma output CRT_ORG_PAGE_82 = 0x0000
+#pragma output CRT_ORG_PAGE_83 = 0x0000
+#pragma output CRT_ORG_PAGE_84 = 0x0000
+#pragma output CRT_ORG_PAGE_85 = 0x0000

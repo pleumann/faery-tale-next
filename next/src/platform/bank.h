@@ -11,6 +11,9 @@
 #define PAGE_LOGIC      80      /* game/logic.c   - daily tick, AI, encounters, revive */
 #define PAGE_DOORS      81      /* game/doors.c   - doors, xfer, find_place */
 #define PAGE_OBJECTS    82      /* game/objects.c - object lists */
+#define PAGE_MOVE       83      /* game/move.c    - actor loop, combat */
+#define PAGE_DRAW       84      /* game/sprites.c - actors as hardware sprites */
+#define PAGE_COMBAT     85      /* game/combat.c  - melee, missiles, depth sort */
 
 extern uint8_t cur_bank;        /* page in slot 0 (ROM_PAGE when no banked code runs) */
 

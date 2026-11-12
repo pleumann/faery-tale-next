@@ -27,7 +27,9 @@
 
 #define SLOT2 ((uint8_t *)0x4000)
 
-static uint8_t buf[16 * 256];           /* up to 4x4 cells (the bird) */
+/* compose buffer: up to 4x4 cells (the bird), in its own page mapped at slot 3 */
+#define BUF_PAGE    73
+#define buf         ((uint8_t *)0x6000)
 static uint8_t shadow[64];
 static uint8_t bw, bh;                  /* buffer size in cells */
 static uint8_t next_sprite, last_sprites, npat;
@@ -39,7 +41,7 @@ static struct attr attrs[64];
 uint8_t dbg_frame[20];
 #endif
 
-void sprites_init(void)
+void sprites_init_b(void)
 {
     uint8_t h;
 
@@ -65,7 +67,7 @@ void sprites_init(void)
     }
 }
 
-void sprites_palette(const uint16_t *rgb4, uint8_t pct)
+void sprites_palette_b(const uint16_t *rgb4, uint8_t pct)
 {
     nextreg(NR_PAL_CTRL, 0x20);         /* first sprite palette */
     nextreg(NR_PAL_INDEX, 0);
@@ -363,20 +365,22 @@ offscreen:
         goto newpass;
 }
 
-void sprites_draw(void)
+void sprites_draw_b(void)
 {
     uint8_t j;
     pat_base ^= 32;
     next_sprite = 0;
     npat = 0;
+    mmu_set(3, BUF_PAGE);
     for (j = 0; j < anix2; j++)
         draw_actor(anim_index[j]);
+    mmu_set(3, 11);
     for (j = next_sprite; j < last_sprites; j++)
         set_sprite(j, 0, 0, 0, 0);
 }
 
 /* Write the attributes prepared by sprites_draw() - call right after the vblank. */
-void sprites_flush(void)
+void sprites_flush_b(void)
 {
     uint8_t i, n = next_sprite > last_sprites ? next_sprite : last_sprites;
     IO_SPRITE_SLOT = 0;

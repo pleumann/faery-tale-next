@@ -7,6 +7,7 @@
 #include "view.h"
 #include "sprites.h"
 #include "banked.h"
+#include "actors.h"
 
 /* ---- banked entry points: functions with suffix _b live in the named page ---- */
 
@@ -61,6 +62,24 @@ void ob_pos_set(uint8_t list, uint8_t idx, uint16_t x, uint16_t y)
     ob_field(list, idx, 0, 1, x);
     ob_field(list, idx, 1, 1, y);
 }
+
+void hero_control_b(uint8_t dir, uint8_t fire);
+void actors_update_b(void);
+void combat_update_b(void);
+void actors_sort_b(void);
+void hero_control(uint8_t dir, uint8_t fire) { BANK_ENTER(PAGE_MOVE); hero_control_b(dir, fire); BANK_LEAVE(); }
+void actors_update(void) { BANK_ENTER(PAGE_MOVE); actors_update_b(); BANK_LEAVE(); }
+void combat_update(void) { BANK_ENTER(PAGE_COMBAT); combat_update_b(); BANK_LEAVE(); }
+void actors_sort(void) { BANK_ENTER(PAGE_COMBAT); actors_sort_b(); BANK_LEAVE(); }
+
+void sprites_init_b(void);
+void sprites_palette_b(const uint16_t *rgb4, uint8_t pct);
+void sprites_draw_b(void);
+void sprites_flush_b(void);
+void sprites_init(void) { BANK_ENTER(PAGE_DRAW); sprites_init_b(); BANK_LEAVE(); }
+void sprites_palette(const uint16_t *rgb4, uint8_t pct) { BANK_ENTER(PAGE_DRAW); sprites_palette_b(rgb4, pct); BANK_LEAVE(); }
+void sprites_draw(void) { BANK_ENTER(PAGE_DRAW); sprites_draw_b(); BANK_LEAVE(); }
+void sprites_flush(void) { BANK_ENTER(PAGE_DRAW); sprites_flush_b(); BANK_LEAVE(); }
 
 /* ---- shared helpers ---- */
 
