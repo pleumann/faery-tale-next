@@ -21,7 +21,7 @@
 
 #define L2W         ((uint8_t *)0x6000)
 #define SRC         ((uint8_t *)0x4000)
-#define BRUSH_PAGE  40                  /* free before the first region is loaded */
+#define BRUSH_PAGE  56                  /* sector/map copies: loaded only after the intro */
 #define PIC_Y       28                  /* 320x200 pictures are centred in 256 lines */
 
 /* fmain.c:484 */

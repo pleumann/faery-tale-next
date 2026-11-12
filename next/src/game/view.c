@@ -118,13 +118,15 @@ void view_clear(void)
 void view_blit_object(uint8_t frame, uint8_t off, uint8_t h, uint16_t px, uint8_t py)
 {
     const struct seq_info *q = &seq_list[OBJECTS];
-    uint16_t src = (uint16_t)frame * 256;
+    uint32_t src32 = (uint32_t)frame * 256 + q->base_off;
+    uint8_t spage = q->page + (uint8_t)(src32 >> 13);
+    uint16_t src = (uint16_t)(src32 & 0x1FFF);
     uint8_t row, col, v;
     uint16_t bx, by;
     for (row = 0; row < h; row++) {
         for (col = 0; col < 16; col++) {
-            mmu_set(2, q->page + (src >> 13));
-            v = SRC[(src & 0x1FFF) + (uint16_t)(off + row) * 16 + col];
+            mmu_set(2, spage);
+            v = SRC[src + (uint16_t)(off + row) * 16 + col];
             if (v == 31) continue;
             bx = (map_x + px + col) % 320;
             by = (map_y + py + row) & 255;

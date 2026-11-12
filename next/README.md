@@ -3,13 +3,27 @@
 Work in progress. The original Amiga sources in the parent directory are left untouched;
 this directory holds the port.
 
+## Two builds
+
+| Build | Files | Machine |
+|---|---|---|
+| `build/sd2m/fta.nex` | one file, all data inside (1.4 MB) | Next with 2 MB |
+| `build/sd/fta.nex` + `build/sd/FTA/` | program and data folder | any Next (1 MB) |
+
+The 2 MB build packs the data files into RAM pages (`tools/memfs.py`); the file functions
+read from there, tiles and figures are used in place, nothing is loaded from the SD card
+during the game. Savegames go next to the NEX (`FTASAVEA.DAT` ...). The 1 MB build loads
+from the `FTA` folder (savegames `FTA/SAVEA.DAT` ...) and loads tiles ahead near region
+borders.
+
 ## Build
 
 Requirements: z88dk (`zcc` in `PATH`), Python 3 (no extra modules), for running: CSpect + mono.
 
 ```
 make          # converts ../game data into build/sd/FTA and builds build/sd/fta.nex
-make run      # starts CSpect with build/sd as SD card root
+make run      # starts CSpect with build/sd as SD card root (1 MB build)
+make run2m    # starts the single-file 2 MB build
 ```
 
 On real hardware copy the contents of `build/sd` (fta.nex and the FTA folder) to the same

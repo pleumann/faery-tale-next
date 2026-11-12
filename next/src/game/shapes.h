@@ -6,6 +6,7 @@
 
 struct seq_info {
     uint8_t page;               /* first 8K page */
+    uint16_t base_off;          /* offset of frame 0 in that page (2 MB build: in place) */
     uint8_t frames;
     uint8_t wcells, hcells;     /* size in 16x16 cells */
     uint8_t height;             /* real height in pixels */

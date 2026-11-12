@@ -37,10 +37,7 @@ void shapes_init(void)
     if (h == FILE_ERROR)
         return;
     file_seek(h, 2);
-    file_read_at(h, 72, 0, sizeof(sets));      /* via a free page, then copy */
-    mmu_set(2, 72);
-    memcpy(sets, (uint8_t *)0x4000, sizeof(sets));
-    mmu_set(2, 10);
+    file_read(h, sets, sizeof(sets));
     file_close(h);
 }
 
@@ -56,6 +53,13 @@ void read_shapes(uint8_t cfile)
     q->hcells = s->hcells;
     q->height = s->height;
     q->frame_bytes = (uint16_t)s->wcells * s->hcells * 256;
+    q->base_off = 0;
+#ifdef MEMFS
+    /* 2 MB build: use the frames where they are */
+    (void)h;
+    memfs_locate("FTA/SHAPES.DAT", s->offset, &q->page, &q->base_off);
+    return;
+#endif
     h = file_open("FTA/SHAPES.DAT");
     if (h == FILE_ERROR)
         return;

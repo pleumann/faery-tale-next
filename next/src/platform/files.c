@@ -23,8 +23,85 @@ static const char *resident_name(const char *name)
     return fname;
 }
 
+#ifdef MEMFS
+/* ---- 2 MB build: the data files live in RAM pages (tools/memfs.py) ---- */
+#include <string.h>
+#include "memfs.h"
+
+#define MEMFS_HANDLES 4
+static struct { uint8_t file; uint8_t used; uint32_t pos; } mh[MEMFS_HANDLES];
+#define SLOT1 ((uint8_t *)0x2000)
+
+static int8_t memfs_find(const char *name)
+{
+    uint8_t i;
+    for (i = 0; i < MEMFS_COUNT; i++)
+        if (!strcmp(memfs_files[i].name, name)) return i;
+    return -1;
+}
+
+uint8_t memfs_locate(const char *name, uint32_t pos, uint8_t *page, uint16_t *off)
+{
+    int8_t f = memfs_find(name);
+    uint32_t a;
+    if (f < 0) return 0;
+    a = (uint32_t)memfs_files[f].offset + pos;
+    *page = memfs_files[f].page + (uint8_t)(a >> 13);
+    *off = (uint16_t)(a & 0x1FFF);
+    return 1;
+}
+
+/* copy len bytes of file f from pos to (dst_page, dst_off), or to dst_ptr if not NULL */
+static uint32_t memfs_copy(uint8_t h, uint8_t dst_page, uint16_t dst_off, uint8_t *dst_ptr, uint32_t len)
+{
+    const struct memfs_file *mf = &memfs_files[mh[h].file];
+    uint32_t done = 0;
+    if (mh[h].pos >= mf->size) return 0;
+    if (len > mf->size - mh[h].pos) len = mf->size - mh[h].pos;
+    while (done < len) {
+        uint32_t a = (uint32_t)mf->offset + mh[h].pos;
+        uint16_t soff = (uint16_t)(a & 0x1FFF), n = 8192 - soff;
+        if (dst_ptr == 0 && 8192 - dst_off < n) n = 8192 - dst_off;
+        if (len - done < n) n = (uint16_t)(len - done);
+        mmu_set(1, mf->page + (uint8_t)(a >> 13));
+        if (dst_ptr) {
+            memcpy(dst_ptr, SLOT1 + soff, n);
+            dst_ptr += n;
+        } else {
+            mmu_set(WINDOW_SLOT, dst_page);
+            memcpy(WINDOW_ADDR + dst_off, SLOT1 + soff, n);
+            dst_off += n;
+            if (dst_off == 8192) { dst_off = 0; dst_page++; }
+        }
+        mh[h].pos += n;
+        done += n;
+    }
+    mmu_set(1, 0xFF);
+    mmu_set(WINDOW_SLOT, 10);
+    return done;
+}
+#define IS_MEM(h) ((h) & 0x80)
+#define MH(h) ((h) & 0x7F)
+#endif
+
 uint8_t file_open(const char *name)
 {
+#ifdef MEMFS
+    {
+        int8_t f = memfs_find(name);
+        uint8_t i;
+        if (f >= 0) {
+            for (i = 0; i < MEMFS_HANDLES; i++)
+                if (!mh[i].used) {
+                    mh[i].used = 1; mh[i].file = f; mh[i].pos = 0;
+                    errno = 0;
+                    return 0x80 | i;
+                }
+            return FILE_ERROR;
+        }
+    }
+#endif
+    {
     uint8_t h;
     errno = 0;
     name = resident_name(name);
@@ -32,10 +109,14 @@ uint8_t file_open(const char *name)
     h = esx_f_open(name, ESX_MODE_R | ESX_MODE_OPEN_EXIST);
     ROM_OUT();
     return errno ? FILE_ERROR : h;
+    }
 }
 
 void file_close(uint8_t h)
 {
+#ifdef MEMFS
+    if (IS_MEM(h)) { mh[MH(h)].used = 0; return; }
+#endif
     ROM_IN();
     esx_f_close(h);
     ROM_OUT();
@@ -43,6 +124,9 @@ void file_close(uint8_t h)
 
 uint8_t file_seek(uint8_t h, uint32_t pos)
 {
+#ifdef MEMFS
+    if (IS_MEM(h)) { mh[MH(h)].pos = pos; return 0; }
+#endif
     errno = 0;
     ROM_IN();
     esx_f_seek(h, pos, ESX_SEEK_SET);
@@ -60,6 +144,9 @@ uint32_t file_read_pages(uint8_t h, uint8_t first_page, uint32_t len)
     uint32_t total = 0;
     uint16_t want, n, off = 0;
 
+#ifdef MEMFS
+    if (IS_MEM(h)) return memfs_copy(MH(h), first_page, 0, 0, len);
+#endif
     errno = 0;
     while (len) {
         want = len > CHUNK ? CHUNK : (uint16_t)len;
@@ -85,6 +172,9 @@ uint32_t file_read_pages(uint8_t h, uint8_t first_page, uint32_t len)
 uint16_t file_read_at(uint8_t h, uint8_t page, uint16_t offset, uint16_t len)
 {
     uint16_t n;
+#ifdef MEMFS
+    if (IS_MEM(h)) return (uint16_t)memfs_copy(MH(h), page, offset, 0, len);
+#endif
     errno = 0;
     mmu_set(WINDOW_SLOT, page);
     ROM_IN();
@@ -111,9 +201,7 @@ uint16_t file_load(const char *name, void *dst, uint16_t len)
     uint8_t h = file_open(name);
     if (h == FILE_ERROR)
         return 0;
-    ROM_IN();
-    n = esx_f_read(h, dst, len);
-    ROM_OUT();
+    n = file_read(h, dst, len);
     file_close(h);
     return n;
 }
@@ -143,6 +231,9 @@ uint16_t file_write(uint8_t h, const void *src, uint16_t len)
 uint16_t file_read(uint8_t h, void *dst, uint16_t len)
 {
     uint16_t n;
+#ifdef MEMFS
+    if (IS_MEM(h)) return (uint16_t)memfs_copy(MH(h), 0, 0, (uint8_t *)dst, len);
+#endif
     errno = 0;
     ROM_IN();
     n = esx_f_read(h, dst, len);

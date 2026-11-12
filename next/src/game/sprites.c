@@ -89,7 +89,7 @@ void sprites_palette_b(const uint16_t *rgb4, uint8_t pct)
    (only used for single-cell objects). */
 static void fetch_frame(const struct seq_info *q, uint8_t frame, uint8_t skip)
 {
-    uint32_t off = (uint32_t)frame * q->frame_bytes;
+    uint32_t off = (uint32_t)frame * q->frame_bytes + q->base_off;
     uint16_t n = q->frame_bytes, done = 0, chunk;
 
     bw = q->wcells;

@@ -119,6 +119,18 @@ static void region_banks(const struct need *nd, uint8_t *b)
 static void tiles_for_region(const struct need *nd)
 {
     uint8_t want[4], i, k, s;
+#ifdef MEMFS
+    {   /* 2 MB build: all banks are in RAM, use them in place */
+        uint8_t page;
+        uint16_t off;
+        memfs_locate("FTA/TILES.DAT", 0, &page, &off);
+        region_banks(nd, want);
+        for (i = 0; i < 4; i++)
+            for (k = 0; k < 4; k++)
+                tile_pages[i * 4 + k] = page + want[i] * 4 + k;
+        return;
+    }
+#endif
     region_banks(nd, want);
     for (i = 0; i < 4; i++) {
         s = find_slot(want[i]);
@@ -147,6 +159,9 @@ static void tiles_for_region(const struct need *nd)
 void world_prefetch(void)
 {
     uint8_t xs, ys, xr, yr, target, want[4], cur[4], i;
+#ifdef MEMFS
+    return;                             /* nothing to load ahead in the 2 MB build */
+#endif
 
     if (region_num > 7 || new_region < NO_REGION) return;
     if (pf_bank != NO_BANK) { pf_chunk(); return; }

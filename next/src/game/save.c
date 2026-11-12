@@ -38,7 +38,13 @@ static const struct item items[] = {
     { extent_list, 2 * sizeof(struct extent) },
 };
 
+#ifdef MEMFS
+static char savename[] = "FTASAVEA.DAT";       /* next to the single fta.nex */
+#define SLOT_CHAR 7
+#else
 static char savename[] = "FTA/SAVEA.DAT";
+#define SLOT_CHAR 8
+#endif
 
 /* slot 0..7 = A..H; save = 1 to save, 0 to load */
 void savegame(uint8_t slot, uint8_t save)
@@ -46,7 +52,7 @@ void savegame(uint8_t slot, uint8_t save)
     uint32_t magic = SAVE_MAGIC;
     uint8_t h, i, ok;
 
-    savename[8] = 'A' + slot;
+    savename[SLOT_CHAR] = 'A' + slot;
     h = save ? file_create(savename) : file_open(savename);
     ok = h != FILE_ERROR;
     if (ok) {

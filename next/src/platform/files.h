@@ -26,6 +26,11 @@ uint16_t file_read(uint8_t h, void *dst, uint16_t len);
 uint32_t file_load_pages(const char *name, uint8_t first_page);
 uint16_t file_load(const char *name, void *dst, uint16_t len);
 
+#ifdef MEMFS
+/* 2 MB build: where a data file byte lives in RAM (for direct use without copying) */
+uint8_t memfs_locate(const char *name, uint32_t pos, uint8_t *page, uint16_t *off);
+#endif
+
 /* called between the pieces of long reads (e.g. to keep the music playing) */
 extern void (*file_idle_hook)(void);
 

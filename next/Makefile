@@ -35,7 +35,11 @@ $(foreach b,$(BANKED),$(eval PAGE_$(word 1,$(subst :, ,$(b))) := $(word 2,$(subs
 # every object depends on all headers (simple and safe; each file compiles in seconds)
 HEADERS  := $(wildcard src/*.h src/*/*.h) src/zpragma.inc $(GEN)/narr.h $(ASSETS)
 
-all: $(SD)/fta.nex
+SD2M     := $(BUILD)/sd2m
+OBJS2M   := $(patsubst $(BUILD)/obj/%,$(BUILD)/obj2m/%,$(OBJS))
+BANK_OBJS2M := $(patsubst $(BUILD)/obj/%,$(BUILD)/obj2m/%,$(BANK_OBJS))
+
+all: $(SD)/fta.nex $(SD2M)/fta.nex
 
 assets: $(ASSETS)
 
@@ -50,6 +54,31 @@ $(BUILD)/obj/%.o: src/%.asm
 $(BUILD)/obj/bank/%.o: src/game/%.c $(HEADERS)
 	@mkdir -p $(dir $@)
 	$(ZCC) $(ZFLAGS) -c $< -o $@ --codesegPAGE_$(PAGE_$*) --constsegPAGE_$(PAGE_$*)
+
+# 2 MB build: all data inside the NEX (tools/memfs.py)
+$(GEN)/memfs.h: $(ASSETS) $(GEN)/narr.h tools/memfs.py
+	$(PYTHON) tools/memfs.py header $(SD)/FTA $@
+
+$(BUILD)/obj2m/%.o: src/%.c $(HEADERS) $(GEN)/memfs.h
+	@mkdir -p $(dir $@)
+	$(ZCC) $(ZFLAGS) -DMEMFS -c $< -o $@
+
+$(BUILD)/obj2m/%.o: src/%.asm
+	@mkdir -p $(dir $@)
+	$(ZCC) $(ZFLAGS) -c $< -o $@
+
+$(BUILD)/obj2m/bank/%.o: src/game/%.c $(HEADERS) $(GEN)/memfs.h
+	@mkdir -p $(dir $@)
+	$(ZCC) $(ZFLAGS) -DMEMFS -c $< -o $@ --codesegPAGE_$(PAGE_$*) --constsegPAGE_$(PAGE_$*)
+
+$(SD2M)/fta.nex: $(OBJS2M) $(BANK_OBJS2M) tools/memfs.py
+	@mkdir -p $(SD2M)
+	$(ZCC) $(ZFLAGS) $(OBJS2M) $(BANK_OBJS2M) -o $(BUILD)/obj2m/fta -m -subtype=nex -create-app
+	$(PYTHON) tools/memfs.py pack $(SD)/FTA $(BUILD)/obj2m/fta.nex $@
+	@grep -E "^__BSS_END_tail" $(BUILD)/obj2m/fta.map
+
+run2m: all
+	cd $(SD2M) && mono $(CSPECT) -w3 -zxnext -s28 -mmc=$(CURDIR)/$(SD2M)/ fta.nex
 
 $(SD)/fta.nex: $(OBJS) $(BANK_OBJS)
 	@mkdir -p $(SD)
@@ -73,4 +102,4 @@ music-preview: $(ASSETS)
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all assets run clean music-preview
+.PHONY: all assets run run2m clean music-preview
