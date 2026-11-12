@@ -24,6 +24,7 @@
 #endif
 
 #define AY_REG      0xFFFD
+#define DAC_PORT    0xDF                /* SpecDrum: DACs A and D */
 #define AY_DATA     0xBFFD
 
 struct voice {
@@ -108,7 +109,8 @@ static void set_period(uint8_t v, uint16_t period)
 void audio_init_b(void)
 {
     uint8_t i;
-    nextreg(0x08, nextreg_read(0x08) | 0x02);  /* turbosound: three AYs */
+    nextreg(0x08, nextreg_read(0x08) | 0x02 | 0x08);  /* turbosound: three AYs; DACs on */
+    z80_outp(0xFFDF, 0x80);             /* DAC at the centre */
     cur_ay = 0xFF;
     for (i = 0; i < 2; i++) {
         ay_select(i);
@@ -229,8 +231,72 @@ void audio_tick_b(void)
     mmu_set(1, 0xFF);
 }
 
-/* fmain.c:3616 - effect(num, period): a noise burst as long as the Amiga sample */
+/* ---- sound effects: the original samples through the DAC, played by the zxnDMA ----
+   The DMA reads from the CPU address space, so the sample is copied into a resident
+   buffer first (glue.c). Rate as on the Amiga: 3546895 / period Hz; the DMA prescaler
+   (875 kHz / prescaler) only goes to 255, slower samples get their bytes repeated. */
+
+extern uint8_t sample_buf[];
+extern uint8_t sample_page;
+extern uint16_t sample_off;
+#define SAMPLE_BUF  2304
+#define DMA_PORT    0x6B
+
+static uint8_t sb(uint16_t o)
+{
+    uint32_t a = (uint32_t)sample_off + o;
+    mmu_set(1, sample_page + (uint8_t)(a >> 13));
+    return SLOT1[(uint16_t)a & 0x1FFF];
+}
+
+static void dac_effect(uint8_t num, uint16_t period)
+{
+    uint16_t off = 0, len, n, i, j;
+    uint32_t presc;
+    uint8_t rep = 1, k, m1 = nextreg_read(0x51), v;
+    static uint8_t prog[21] = {
+        0x83, 0xC3, 0xC7, 0xCB,         /* disable, reset, reset port timings */
+        0x7D, 0, 0, 0, 0,               /* WR0: A->B, source, length */
+        0x54, 0x02,                     /* WR1: A = memory, incrementing, 2 cycles */
+        0x68, 0x22, 0,                  /* WR2: B = I/O, fixed, 2 cycles, prescaler */
+        0xCD, 0xDF, 0xFF,               /* WR4: burst, port B = 0xFFDF (SpecDrum) */
+        0x82,                           /* WR5: stop at the end */
+        0xCF, 0xB3, 0x87 };             /* load, force ready, enable */
+
+    for (k = 0; k < num; k++)
+        off += 2 + (sb(off) | ((uint16_t)sb(off + 1) << 8));
+    len = sb(off) | ((uint16_t)sb(off + 1) << 8);
+    off += 2;
+    presc = (uint32_t)period * 875000UL / 3546895UL;
+    while (presc / rep > 255) rep++;
+    presc /= rep;
+    if (presc < 1) presc = 1;
+    if ((uint32_t)len * rep > SAMPLE_BUF) len = SAMPLE_BUF / rep;
+    z80_outp(DMA_PORT, 0x83);           /* stop a sample still playing */
+    for (i = 0, j = 0; i < len; i++) {
+        v = sb(off + i);
+        for (k = 0; k < rep; k++) sample_buf[j++] = v;
+    }
+    mmu_set(1, m1);
+    n = j;
+    prog[5] = (uint8_t)(uint16_t)sample_buf;
+    prog[6] = (uint8_t)((uint16_t)sample_buf >> 8);
+    prog[7] = (uint8_t)n;
+    prog[8] = (uint8_t)(n >> 8);
+    prog[13] = (uint8_t)presc;
+    for (k = 0; k < sizeof(prog); k++)
+        z80_outp(DMA_PORT, prog[k]);
+}
+
+/* fmain.c:3616 - effect(num, period) */
 void effect_b(uint8_t num, uint16_t period)
+{
+    if (!sound_on || num > 5) return;
+    dac_effect(num, period);
+}
+
+/* AY noise burst as long as the Amiga sample (used before the DAC version) */
+void effect_ay(uint8_t num, uint16_t period)
 {
     uint32_t frames;
     uint8_t noise;

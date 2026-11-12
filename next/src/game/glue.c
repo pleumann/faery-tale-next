@@ -125,6 +125,11 @@ uint8_t music_irq_on;
 /* calls into the player from the main program: interrupts off meanwhile */
 #define AUDIO_CALL(x) do { crit_enter(); { BANK_ENTER(PAGE_AUDIO); x; BANK_LEAVE(); } crit_leave(); } while (0)
 
+/* sound effect samples (audio.c): the playing one in resident memory for the DMA */
+uint8_t sample_buf[2304];
+uint8_t sample_page;
+uint16_t sample_off;
+
 void audio_init(void)
 {
     uint8_t h = file_open("FTA/MUSIC.DAT");
@@ -132,6 +137,13 @@ void audio_init(void)
         file_read_pages(h, 76, MUSIC_SIZE);
         file_close(h);
     }
+#ifdef MEMFS
+    memfs_locate("FTA/SAMPLES.DAT", 0, &sample_page, &sample_off);
+#else
+    sample_page = 63;                   /* free page in the 1 MB build */
+    sample_off = 0;
+    file_load_pages("FTA/SAMPLES.DAT", sample_page);
+#endif
     AUDIO_CALL(audio_init_b());
     music_irq_on = 1;
 }

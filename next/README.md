@@ -42,8 +42,9 @@ inventory picture.
 Music and sound (M6): the four-voice score player of `gdriver.asm` runs once per frame
 on the AY chips (voices 0–2 on AY 1, voice 3 on AY 2 channel A); the moods of the
 original (day, night, battle, indoors, astral plane, death) switch like in `setmood`.
-The Amiga waveforms become AY square tones. Sound effects are noise bursts on AY 2
-channel C, as long as the original samples (a DAC version of the samples can follow).
+The Amiga waveforms become AY square tones. Sound effects are the original samples,
+played through the DAC (SpecDrum port 0xFFDF) by the zxnDMA at the Amiga's rates; the
+player runs in the frame interrupt.
 `make -j8` builds only what changed (a full build takes about 15 s). `make music-preview` renders all songs as WAV files into `build/preview` with the same
 rules, to listen on the host.
 
