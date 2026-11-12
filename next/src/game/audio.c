@@ -89,13 +89,12 @@ static void ay(uint8_t reg, uint8_t val)
     z80_outp(AY_DATA, val);
 }
 
-/* volume of voice v (0..64). Voice 3 (the bass) plays as AY envelope sawtooth: there the
-   volume only switches the envelope on or off. */
+/* volume of voice v (0..64) */
 static void set_volume(uint8_t v, uint8_t vol)
 {
     if (vol > 64) vol = 64;
     if (v < 3) { ay_select(0); ay(8 + v, vol_ay[vol]); }
-    else { ay_select(1); ay(8, vol ? 0x10 : 0); }
+    else { ay_select(1); ay(8, vol_ay[vol]); }
 }
 
 static void set_period(uint8_t v, uint16_t period)
@@ -113,7 +112,7 @@ void audio_init_b(void)
     cur_ay = 0xFF;
     for (i = 0; i < 2; i++) {
         ay_select(i);
-        ay(7, i ? 0x1F : 0x38);         /* AY 1: tones A-C; AY 2: envelope on A, noise C */
+        ay(7, i ? 0x1E : 0x38);         /* AY 1: tones A-C; AY 2: tone A, noise C */
         ay(8, 0); ay(9, 0); ay(10, 0);
     }
 }
@@ -197,18 +196,9 @@ newnote:
             return;
         }
         if (cmd > 83) cmd = 83;
-        if (v == 3) {
-            /* buzzer bass: sawtooth from the envelope generator (shape 8 = repeating ramp
-               down), like the Amiga's sawtooth-like waveform 0 */
-            uint16_t ep = mw(MUSIC_OFF_ENVPER + (uint16_t)cmd * 2) >> (wave_octave[vc->wave_num & 7] + BASS_OCTAVE);
-            ay_select(1);
-            ay(11, (uint8_t)ep);
-            ay(12, (uint8_t)(ep >> 8));
-            ay(13, 0x08);
-        } else {
-            period = mw(MUSIC_OFF_PERIODS + (uint16_t)cmd * 2);
-            set_period(v, period >> wave_octave[vc->wave_num & 7]);
-        }
+        period = mw(MUSIC_OFF_PERIODS + (uint16_t)cmd * 2) >> wave_octave[vc->wave_num & 7];
+        if (v == 3) period >>= BASS_OCTAVE;             /* out of the hum range */
+        set_period(v, period);
         set_volume(v, vol);
         return;
     }

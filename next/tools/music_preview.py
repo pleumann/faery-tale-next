@@ -90,10 +90,7 @@ def render(data, off, seconds, indoor_dungeon=False):
                     if v == 3:
                         f *= 2 ** BASS_OCTAVE
                     phases[v] = (phases[v] + f / RATE) % 1.0
-                    if v == 3:      # buzzer bass: envelope sawtooth (shape 8), full level
-                        s += 1 - 2 * phases[v]
-                    else:
-                        s += ay_amp(VOL_AY[vc["vol"]]) * (1 if phases[v] < 0.5 else -1)
+                    s += ay_amp(VOL_AY[vc["vol"]]) * (1 if phases[v] < 0.5 else -1)
             out += struct.pack("<h", int(max(-1, min(1, s / 3)) * 30000))
     return out
 
