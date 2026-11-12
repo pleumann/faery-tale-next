@@ -96,6 +96,8 @@ void main(void)
 {
     uint8_t demo_on, demo_step, demo_count, last_region, h, dir, fire;
     uint16_t next_frame, img_x, img_y;
+    uint16_t walk_x = 0, walk_y = 0;
+    uint8_t walk_to = 0;
 
     nextreg(NR_CPU_SPEED, 3);           /* 28 MHz */
     ui_font_from_rom();                 /* while the ROM is still at 0x0000 */
@@ -170,7 +172,29 @@ void main(void)
                     dir = com2[4 + 3 * ((mouse_y - 183) / 8 - 1) + ((mouse_x - 283) / 8 - 1)];
             }
             if (mouse_buttons & MOUSE_RIGHT) fire = 1;
+
+            /* Port addition (not in the original): click or hold the left button on the
+               playfield to walk there - diagonally while both dx and dy are left */
+            if ((mouse_buttons & MOUSE_LEFT) && mouse_y < VIEW_Y + VIEW_H &&
+                mouse_x >= VIEW_X && mouse_x < VIEW_X + VIEW_W) {
+                walk_x = map_x + (mouse_x - VIEW_X);
+                walk_y = map_y + (mouse_y - VIEW_Y);
+                walk_to = 1;
+                demo_on = 0;
+            }
             pointer_set(mouse_x, mouse_y, 1);
+        }
+        if (dir != 9 && !(mouse_buttons & MOUSE_LEFT))
+            walk_to = 0;                        /* keys and joystick take over */
+        if (walk_to && dir == 9) {
+            int16_t dx = (int16_t)(walk_x - hero_x), dy = (int16_t)(walk_y - hero_y);
+            int8_t xd = 0, yd = 0;
+            if (dx > 3) xd = 1; else if (dx < -3) xd = -1;
+            if (dy > 2) yd = 1; else if (dy < -2) yd = -1;
+            if ((xd == 0 && yd == 0) || frustflag > 20)
+                walk_to = 0;                    /* arrived, or stuck */
+            else
+                dir = com2[4 + 3 * yd + xd];
         }
         if (dir != 9 || fire)
             demo_on = 0;
