@@ -10,6 +10,7 @@
 #include "ui.h"
 #include "menus.h"
 #include "audio.h"
+#include "intro.h"
 #include "view.h"
 
 enum cmodes { ITEMS = 0, MAGIC, TALK, BUY, GAME, SAVEX, KEYS, GIVE, USE, FILE_ };
@@ -128,7 +129,7 @@ static const uint8_t stone_list[22] = {
 
 uint8_t cmode;
 static int8_t real_options[12];
-static uint8_t hit, hitgo;
+static uint8_t hit, hitgo, svflag;
 
 static uint8_t stuff_flag(uint8_t i) { return stuff[i] ? 10 : 8; }
 
@@ -349,8 +350,8 @@ pickup:
                     change_object(nearest, 2);
                     stuff[8] += stuff[ARROWBASE] * 10;
                     if (stuff[22]) {
-                        /* TODO (M7): victory sequence (win_colors) */
                         quitflag = TRUE; viewstatus = 2;
+                        win();
                     }
                 }
                 else if (anim_list[nearest].weapon < 0) ;
@@ -528,7 +529,7 @@ pickup:
         audio_options(menus[GAME].enabled[6] & 1, menus[GAME].enabled[7] & 1);
         if (hit == 6) setmood(TRUE);
         if (hit == 8) gomenu(SAVEX);
-        if (hit == 9) { print("(loading not yet available)"); }   /* TODO (M7) */
+        if (hit == 9) { svflag = 0; gomenu(FILE_); }
         break;
     case USE:
         if (hit == 7) {
@@ -548,9 +549,10 @@ pickup:
         break;
     case SAVEX:
         if (hit == 6) quitflag = TRUE;
-        if (hit == 5) { print("(saving not yet available)"); gomenu(GAME); }   /* TODO (M7) */
+        if (hit == 5) { svflag = 1; gomenu(FILE_); }
         break;
     case FILE_:
+        savegame(hit, svflag);
         gomenu(GAME);
         break;
     case KEYS:

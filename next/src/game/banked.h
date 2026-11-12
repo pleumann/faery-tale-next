@@ -29,6 +29,7 @@ uint8_t ob_id_get(uint8_t list, uint8_t idx);
 void ob_id_set(uint8_t list, uint8_t idx, uint8_t id);
 
 /* resident helpers */
+void savegame(uint8_t slot, uint8_t save);      /* save.c: slot 0..7 = A..H */
 void move_extent(uint8_t e, uint16_t x, uint16_t y);
 int8_t setfig_image_base(uint8_t id);
 uint8_t setfig_cfile(uint8_t id);

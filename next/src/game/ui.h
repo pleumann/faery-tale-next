@@ -29,6 +29,7 @@ uint8_t place_lookup(uint8_t sector, uint8_t inside);
 /* menu text: 6 cells at a menu slot (0..11), fg pen 0/1, bg pen 0..15 */
 void ui_menu_text(uint8_t slot, const char *label, uint8_t len, uint8_t fg, uint8_t bg);
 void ui_menu_reset(void);
+void ui_panel(uint8_t on);
 
 extern const char *const datanames[3];
 

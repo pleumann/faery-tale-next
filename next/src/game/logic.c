@@ -11,6 +11,8 @@
 #include "banked.h"
 #include "ui.h"
 #include "menus.h"
+#include "placard.h"
+#include "intro.h"
 
 /* fmain.c:45 */
 struct encounter {
@@ -155,7 +157,11 @@ void find_place_b(uint8_t flag)
     if (xtype != extn->etype) {
         xtype = extn->etype;
         if (xtype == 83 && ob_stat_get(8, 9)) {
-            /* TODO (M7): rescue() of the princess */
+            rescue();
+            flag = 0;
+            xtype = 0xFF;                           /* findagain: re-evaluate the extent */
+            find_place_b(flag);
+            return;
         }
         else if (xtype >= 60) {                     /* birds/turtles/special */
             if (xtype == 60 || xtype == 61) {
@@ -490,20 +496,34 @@ void revive_b(uint8_t new_hero)
         actors_on_screen = TRUE;
         actors_loading = FALSE;
 
-        /* TODO (M5/M7): placards "Rescue the Talisman!" etc. */
-        if (brother > 3) quitflag = TRUE;
+        map_message();
+        if (brother == 1) placard_text(0);
+        else if (brother == 2) placard_text(1);
+        else if (brother == 3) placard_text(3);
+        else placard_text(5);
+        placard();
+        delay(120);
+        if (brother > 3) { quitflag = TRUE; delay(500); }
+        else if (brother > 1) {
+            delay(80);
+            placard_clear();
+            delay(10);
+            if (brother == 2) placard_text(2); else placard_text(4);
+            delay(120);
+        }
 
         actor_file = 6; set_file = 13;
         shape_read();
 
         if (brother < 4) {
+            message_off();
             hero_place = 2;
             event(9);
             if (brother == 2) event(10);
             else if (brother == 3) event(11);
         }
     }
-    /* else fade_down(); TODO (M7) */
+    else fade_down();
 
     hero_x = an->abs_x = safe_x;
     hero_y = an->abs_y = safe_y;

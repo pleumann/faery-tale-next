@@ -23,11 +23,12 @@ ASSETS   := $(SD)/FTA/TILES.DAT
 SRCS     := src/main.c src/platform/hw.c src/platform/layer2.c src/platform/files.c \
             src/platform/input.c src/platform/irq.asm \
             src/game/world.c src/game/view.c src/game/actors.c \
-            src/game/state.c src/game/shapes.c src/game/glue.c src/game/ui.c
+            src/game/state.c src/game/shapes.c src/game/glue.c src/game/ui.c \
+            src/game/save.c
 OBJS     := $(patsubst src/%,$(BUILD)/obj/%.o,$(basename $(SRCS)))
 
 # banked modules: file -> 8K page (org 0x0000, run in MMU slot 0, see platform/bank.h)
-BANKED   := logic:80 doors:81 objects:82 move:83 sprites:84 combat:85 menus:86 audio:87
+BANKED   := logic:80 doors:81 objects:82 move:83 sprites:84 combat:85 menus:86 audio:87 placard:88 intro:89
 BANK_OBJS := $(foreach b,$(BANKED),$(BUILD)/obj/bank/$(word 1,$(subst :, ,$(b))).o)
 $(foreach b,$(BANKED),$(eval PAGE_$(word 1,$(subst :, ,$(b))) := $(word 2,$(subst :, ,$(b)))))
 

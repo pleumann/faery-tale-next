@@ -267,3 +267,9 @@ void audio_options_b(uint8_t music, uint8_t sound)
         else setmood_b(TRUE);
     }
 }
+
+void music_play_b(uint8_t off)
+{
+    if (music_on) playscore(off);
+    mmu_set(1, 0xFF);
+}

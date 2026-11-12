@@ -23,6 +23,8 @@
 #include "game/ui.h"
 #include "game/menus.h"
 #include "game/audio.h"
+#include "game/placard.h"
+#include "game/intro.h"
 
 /* Fatal error: hide Layer 2, show the ULA border in an error colour and
    the errno value as 8 attribute blocks (white = 1, MSB left). */
@@ -81,8 +83,8 @@ static void debug_dump(void)
 
 void main(void)
 {
-    uint8_t demo_on = 1, demo_step = 0, demo_count = 0, last_region, h, dir, fire;
-    uint16_t next_frame, img_x = 0xFFFF, img_y = 0xFFFF;
+    uint8_t demo_on, demo_step, demo_count, last_region, h, dir, fire;
+    uint16_t next_frame, img_x, img_y;
 
     nextreg(NR_CPU_SPEED, 3);           /* 28 MHz */
     ui_font_from_rom();                 /* while the ROM is still at 0x0000 */
@@ -99,7 +101,18 @@ void main(void)
 
     ui_init();
     audio_init();
-    seed1 = 12345;                      /* TODO (M7): seed from the title screen */
+    font_load();
+
+    for (;;) {                          /* one game per pass */
+#if defined(DEMO) || defined(TEST_DOOR) || defined(TEST_KEYS) || defined(DEBUG_DUMP)
+    demo_on = 1;
+#else
+    demo_on = 0;
+    intro();                            /* title and book; seeds the random numbers */
+#endif
+    demo_step = demo_count = 0;
+    img_x = img_y = 0xFFFF;
+    quitflag = 0;
     menus_start();
     game_start();                       /* Julian, start village (revive) */
 #ifdef TEST_DOOR
@@ -107,12 +120,11 @@ void main(void)
     hero_x = anim_list[0].abs_x = 0x49d0 + 3;
     hero_y = anim_list[0].abs_y = 0x3dc0 + 20;
     demo_on = 0;
-#else
-    xfer(21600, 15500, TRUE);           /* demo: stone ring */
 #endif
+    if (demo_on) xfer(21600, 15500, TRUE);  /* demo: stone ring */
     next_frame = frames;
 
-    for (;;) {
+    while (!quitflag) {
         uint8_t d = input_dirs();
         int8_t jx = 0, jy = 0;
 
@@ -153,6 +165,8 @@ void main(void)
             }
             if (dir != oldir) { drawcompass(dir); oldir = dir; }
         }
+
+        if (viewstatus == 2) { delay(200); viewstatus = 99; }
 
         /* inventory picture or pause: wait for the next key (fmain.c:1365) */
         if (viewstatus == 4 || viewstatus == 1 || paused()) {
@@ -200,5 +214,6 @@ void main(void)
         if (frames >= 560 && dbg_h != 0xFF) { esx_f_close(dbg_h); dbg_h = 0xFE; }
 #endif
         cycle++;
+    }
     }
 }

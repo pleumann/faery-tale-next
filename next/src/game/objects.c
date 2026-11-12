@@ -7,6 +7,7 @@
 #include "actors.h"
 #include "shapes.h"
 #include "banked.h"
+#include "../platform/files.h"
 
 enum obytes {
     QUIVER = 11,
@@ -335,4 +336,19 @@ uint8_t ob_field_b(uint8_t list, uint8_t idx, uint8_t field, uint8_t write, uint
         return 0;
     }
     return field == 2 ? ob->ob_id : ob->ob_stat;
+}
+
+/* savegame: all object lists, counts and distribution flags (they are resident data) */
+uint8_t objects_io_b(uint8_t h, uint8_t save)
+{
+    uint8_t i, ok = 1;
+    uint16_t (*io)(uint8_t, void *, uint16_t) = save ? (uint16_t (*)(uint8_t, void *, uint16_t))file_write : file_read;
+    ok &= io(h, ob_listg, sizeof(ob_listg)) == sizeof(ob_listg);
+    ok &= io(h, mapobs, sizeof(mapobs)) == sizeof(mapobs);
+    ok &= io(h, dstobs, sizeof(dstobs)) == sizeof(dstobs);
+    for (i = 0; i < 10; i++) {
+        uint16_t n = (uint16_t)mapobs[i] * sizeof(struct object);
+        ok &= io(h, ob_table[i], n) == n;
+    }
+    return ok;
 }

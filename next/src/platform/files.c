@@ -12,10 +12,22 @@ uint8_t cur_bank = ROM_PAGE;
 
 #define DEFAULT_WINDOW_PAGE 10      /* bank 5 low half, normally at 0x4000 */
 
+/* file names may live in banked code: copy them before the ROM is mapped in */
+static char fname[32];
+
+static const char *resident_name(const char *name)
+{
+    uint8_t i = 0;
+    while (name[i] && i < sizeof(fname) - 1) { fname[i] = name[i]; i++; }
+    fname[i] = 0;
+    return fname;
+}
+
 uint8_t file_open(const char *name)
 {
     uint8_t h;
     errno = 0;
+    name = resident_name(name);
     ROM_IN();
     h = esx_f_open(name, ESX_MODE_R | ESX_MODE_OPEN_EXIST);
     ROM_OUT();
@@ -93,4 +105,36 @@ uint16_t file_load(const char *name, void *dst, uint16_t len)
     ROM_OUT();
     file_close(h);
     return n;
+}
+
+uint8_t file_create(const char *name)
+{
+    uint8_t h;
+    errno = 0;
+    name = resident_name(name);
+    ROM_IN();
+    h = esx_f_open(name, ESX_MODE_W | ESX_MODE_OPEN_CREAT_TRUNC);
+    ROM_OUT();
+    return errno ? FILE_ERROR : h;
+}
+
+/* plain transfers to/from resident memory (not slot 0, it holds the ROM meanwhile) */
+uint16_t file_write(uint8_t h, const void *src, uint16_t len)
+{
+    uint16_t n;
+    errno = 0;
+    ROM_IN();
+    n = esx_f_write(h, (void *)src, len);
+    ROM_OUT();
+    return errno ? 0 : n;
+}
+
+uint16_t file_read(uint8_t h, void *dst, uint16_t len)
+{
+    uint16_t n;
+    errno = 0;
+    ROM_IN();
+    n = esx_f_read(h, dst, len);
+    ROM_OUT();
+    return errno ? 0 : n;
 }

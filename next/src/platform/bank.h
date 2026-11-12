@@ -16,6 +16,8 @@
 #define PAGE_COMBAT     85      /* game/combat.c  - melee, missiles, depth sort */
 #define PAGE_MENU       86      /* game/menus.c   - option menus */
 #define PAGE_AUDIO      87      /* game/audio.c   - AY music and effects */
+#define PAGE_PLACARD    88      /* game/placard.c - placards, still screens */
+#define PAGE_INTRO      89      /* game/intro.c   - title, intro, rescue, victory */
 
 extern uint8_t cur_bank;        /* page in slot 0 (ROM_PAGE when no banked code runs) */
 

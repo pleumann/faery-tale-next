@@ -391,3 +391,9 @@ void ui_menu_text(uint8_t slot, const char *label, uint8_t len, uint8_t fg, uint
     for (i = 0; i < 5; i++)
         put_char(col + 1 + i, row, i < len ? label[i] : ' ', pal);
 }
+
+/* show or hide the status panel (vp_text VP_HIDE) */
+void ui_panel(uint8_t on)
+{
+    nextreg(NR_TM_CTRL, on ? (0x80 | 0x40 | 0x02) : (0x40 | 0x02));
+}

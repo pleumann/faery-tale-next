@@ -10,6 +10,8 @@
 #include "actors.h"
 #include "menus.h"
 #include "audio.h"
+#include "placard.h"
+#include "intro.h"
 #include "assets.h"
 #include "../platform/files.h"
 
@@ -136,6 +138,65 @@ void effect(uint8_t num, uint16_t period) { BANK_ENTER(PAGE_AUDIO); effect_b(num
 void setmood(uint8_t now) { BANK_ENTER(PAGE_AUDIO); setmood_b(now); BANK_LEAVE(); }
 void audio_options(uint8_t music, uint8_t sound) { BANK_ENTER(PAGE_AUDIO); audio_options_b(music, sound); BANK_LEAVE(); }
 void stopscore(void) { BANK_ENTER(PAGE_AUDIO); stopscore_b(); BANK_LEAVE(); }
+
+void music_play_b(uint8_t off);
+void music_play(uint8_t off) { BANK_ENTER(PAGE_AUDIO); music_play_b(off); BANK_LEAVE(); }
+
+void font_load_b(void);
+void map_message_b(void);
+void message_off_b(void);
+void placard_text_b(uint8_t n);
+void placard_name_b(void);
+void placard_ssp_b(const char *s);
+void placard_pen_b(uint8_t c);
+void placard_b(void);
+void placard_clear_b(void);
+void font_load(void) { BANK_ENTER(PAGE_PLACARD); font_load_b(); BANK_LEAVE(); }
+void map_message(void) { BANK_ENTER(PAGE_PLACARD); map_message_b(); BANK_LEAVE(); }
+void message_off(void) { BANK_ENTER(PAGE_PLACARD); message_off_b(); BANK_LEAVE(); }
+void placard_text(uint8_t n) { BANK_ENTER(PAGE_PLACARD); placard_text_b(n); BANK_LEAVE(); }
+void placard_name(void) { BANK_ENTER(PAGE_PLACARD); placard_name_b(); BANK_LEAVE(); }
+void placard_pen(uint8_t c) { BANK_ENTER(PAGE_PLACARD); placard_pen_b(c); BANK_LEAVE(); }
+void placard_center_b(uint8_t on);
+void placard_center(uint8_t on) { BANK_ENTER(PAGE_PLACARD); placard_center_b(on); BANK_LEAVE(); }
+void placard(void) { BANK_ENTER(PAGE_PLACARD); placard_b(); BANK_LEAVE(); }
+void placard_clear(void) { BANK_ENTER(PAGE_PLACARD); placard_clear_b(); BANK_LEAVE(); }
+void placard_ssp(const char *s)
+{
+    static char buf[200];               /* the string may live in the caller's page */
+    uint8_t i = 0;
+    while (s[i] && i < sizeof(buf) - 1) { buf[i] = s[i]; i++; }
+    buf[i] = 0;
+    { BANK_ENTER(PAGE_PLACARD); placard_ssp_b(buf); BANK_LEAVE(); }
+}
+
+void intro_b(void);
+void rescue_b(void);
+void win_b(void);
+void intro(void) { BANK_ENTER(PAGE_INTRO); intro_b(); BANK_LEAVE(); }
+void rescue(void) { BANK_ENTER(PAGE_INTRO); rescue_b(); BANK_LEAVE(); }
+void win(void) { BANK_ENTER(PAGE_INTRO); win_b(); BANK_LEAVE(); }
+
+/* Amiga Delay(): ticks of 1/50 s; the music keeps playing */
+void delay(uint16_t ticks)
+{
+    uint16_t end = frames + ticks;
+    while ((int16_t)(frames - end) < 0)
+        audio_update();
+}
+
+/* fmain2.c:623 */
+void fade_down(void)
+{
+    int8_t i;
+    for (i = 100; i >= 0; i -= 5) { fade_page(i, i, i, FALSE); delay(1); }
+}
+
+void fade_normal(void)
+{
+    int8_t i;
+    for (i = 0; i <= 100; i += 5) { fade_page(i, i, i, FALSE); delay(1); }
+}
 
 /* ---- shared helpers ---- */
 
