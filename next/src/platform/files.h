@@ -14,6 +14,9 @@ uint8_t file_seek(uint8_t h, uint32_t pos);          /* 0 on success */
 /* Read len bytes into consecutive 8K pages starting at first_page. Returns bytes read. */
 uint32_t file_read_pages(uint8_t h, uint8_t first_page, uint32_t len);
 
+/* Read len bytes (len + offset <= 8192) into one page at the given offset. */
+uint16_t file_read_at(uint8_t h, uint8_t page, uint16_t offset, uint16_t len);
+
 /* Whole-file convenience helpers. */
 uint32_t file_load_pages(const char *name, uint8_t first_page);
 uint16_t file_load(const char *name, void *dst, uint16_t len);

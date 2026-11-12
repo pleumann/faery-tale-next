@@ -1,5 +1,9 @@
 /* The Faery Tale Adventure - ZX Spectrum Next port.
-   M1 check: intro picture fade, then all tile banks from TILES.DAT shown in turn. */
+   M2: map viewer - region loading, hardware-scrolled playfield.
+
+   Keys: Q/A/O/P or cursor keys (5-8) or joystick to scroll, SPACE/fire = fast,
+         R = back to the start village, I = inside buildings, K = dungeons.
+   Without input the view pans by itself (demo), any direction key takes over. */
 
 #include <stdint.h>
 #include <z80.h>
@@ -9,65 +13,19 @@
 #include "platform/hw.h"
 #include "platform/layer2.h"
 #include "platform/files.h"
-#include "assets.h"
-#include "narr.h"
+#include "platform/input.h"
+#include "game/world.h"
+#include "game/view.h"
 
-static uint16_t pal[32];
-
-/* fmain2.c:367 */
-static const uint16_t pagecolors[32] = {
+/* fmain2.c:367 - colour 31 is set per region in fade_page() */
+static uint16_t pagecolors[32] = {
     0x0000,0x0FFF,0x0E96,0x0B63,0x0631,0x07BF,0x0333,0x0DB8,
     0x0223,0x0445,0x0889,0x0BBC,0x0521,0x0941,0x0F82,0x0FC7,
     0x0040,0x0070,0x00B0,0x06F6,0x0005,0x0009,0x000D,0x037F,
     0x0C00,0x0F50,0x0FA0,0x0FF6,0x0EB6,0x0EA5,0x000F,0x0BDF };
 
-#define TILE_PAGES 40               /* 4 pages for one tile bank (32K) */
-#define SRC  ((uint8_t *)0x4000)    /* slot 2 */
-#define DST  ((uint8_t *)0x6000)    /* slot 3 */
-
-static void layer2_clear(uint8_t colour)
-{
-    for (uint8_t p = 0; p < 10; p++) {
-        mmu_set(3, L2_PAGE_A + p);
-        memset(DST, colour, 8192);
-    }
-    mmu_set(3, 11);
-}
-
-/* Draw the 64 tiles of the loaded bank as 16 x 4 grid at (32, 64). Tiles are 16x32,
-   column-major (512 bytes), Layer 2 is column-major too: 32 bytes per tile column. */
-static void show_bank(void)
-{
-    for (uint8_t t = 0; t < 64; t++) {
-        uint16_t src = (uint16_t)t * TILE_BYTES;          /* offset in 32K bank */
-        uint16_t x = 32 + (t & 15) * 16;
-        uint8_t y = 64 + (t >> 4) * 32;
-        for (uint8_t c = 0; c < 16; c++, x++, src += 32) {
-            mmu_set(2, TILE_PAGES + (src >> 13));
-            mmu_set(3, L2_PAGE_A + (x >> 5));
-            memcpy(DST + ((x & 31) << 8) + y, SRC + (src & 0x1FFF), 32);
-        }
-    }
-    mmu_set(2, 10);
-    mmu_set(3, 11);
-}
-
-/* Fade like fade_down()/fade_normal() in fmain2.c: 5% steps, one per frame. */
-static void fade(uint8_t from, uint8_t to)
-{
-    int8_t step = (to > from) ? 5 : -5;
-    uint8_t p = from;
-    for (;;) {
-        wait_frame();
-        palette_load_rgb4(0, pal, 32, p);
-        if (p == to)
-            break;
-        p += step;
-    }
-}
-
 /* Fatal error: hide Layer 2, show the ULA border in an error colour and
-   the errno value as 8 attribute cells in the top ULA row (white = 1). */
+   the errno value as 8 attribute blocks (white = 1, MSB left). */
 static void fail(uint8_t colour)
 {
     uint8_t e = errno;
@@ -77,7 +35,6 @@ static void fail(uint8_t colour)
     mmu_set(WINDOW_SLOT, 10);
     memset((uint8_t *)0x4000, 0, 6144);
     memset(attr, 0, 768);
-    /* 8 bits as 3x3-cell blocks across row 10: white = 1, blue = 0 */
     for (uint8_t i = 0; i < 8; i++, e <<= 1)
         for (uint8_t y = 0; y < 3; y++)
             for (uint8_t x = 0; x < 3; x++)
@@ -87,35 +44,94 @@ static void fail(uint8_t colour)
         ;
 }
 
+static void set_region_palette(void)
+{
+    if (region_num == 4) pagecolors[31] = 0x0980;
+    else if (region_num == 9) pagecolors[31] = 0x0445;
+    else pagecolors[31] = 0x0BDF;
+    palette_load_rgb4(0, pagecolors, 32, 100);
+}
+
+/* Jump to a place: (x, y) is the hero position, the camera centres on it. */
+static void teleport(uint16_t x, uint16_t y, uint8_t region)
+{
+    map_x = x - 144;
+    map_y = y - 70;
+    new_region = region;
+    load_new_region();
+    gen_mini();
+    set_region_palette();
+    view_invalidate();
+}
+
+#define DEMO_INDOOR  127    /* special dx values: teleport, then hold */
+#define DEMO_DUNGEON 126
+#define DEMO_START   125
+
+/* Demo pan: dx, dy per frame, number of frames. Holds of 250 frames at the start and
+   after crossing into region 2 (3000 px west) make screenshots comparable. */
+static const struct { int8_t dx, dy; uint8_t frames; } demo[] = {
+    { 0, 0, 250 },
+    { -8, 0, 125 }, { -8, 0, 125 }, { -8, 0, 125 }, { 0, 0, 250 },
+    { 0, 4, 100 },
+    { 8, 0, 125 }, { 8, 0, 125 }, { 8, 0, 125 }, { 0, -4, 100 },
+    { DEMO_INDOOR, 0, 250 }, { 0, 4, 100 }, { DEMO_DUNGEON, 0, 250 }, { DEMO_START, 0, 1 },
+};
+
 void main(void)
 {
+    uint8_t demo_on = 1, demo_step = 0, demo_count = 0, last_region, h;
+
     nextreg(NR_CPU_SPEED, 3);           /* 28 MHz */
     irq_init();
     layer2_init();
-    palette_load_rgb4(0, pal, 32, 0);   /* black while loading */
+    palette_load_rgb4(0, pagecolors, 32, 0);
+    view_init();
+    world_init();
 
-    if (!file_load("FTA/PAGE0.PAL", pal, sizeof(pal))) fail(2);
-    if (!file_load_pages("FTA/PAGE0.L2", L2_PAGE_A)) fail(6);
+    h = file_open("FTA/TILES.DAT");
+    if (h == FILE_ERROR) fail(2);
+    file_close(h);
 
-    fade(0, 100);
-    for (uint8_t i = 0; i < 100; i++)
-        wait_frame();
-    fade(100, 0);
+    teleport(19036, 15755, 3);          /* start village, fmain.c:2853 */
 
-    memcpy(pal, pagecolors, sizeof(pal));
     for (;;) {
-        for (uint8_t bank = 0; bank < 17; bank++) {
-            uint8_t h = file_open("FTA/TILES.DAT");
-            if (h == FILE_ERROR) fail(3);
-            if (file_seek(h, (uint32_t)bank * TILE_BANK_BYTES)) fail(4);
-            if (file_read_pages(h, TILE_PAGES, TILE_BANK_BYTES) != TILE_BANK_BYTES) fail(5);
-            file_close(h);
-            layer2_clear(0);
-            show_bank();
-            palette_load_rgb4(0, pal, 32, 100);
-            for (uint8_t i = 0; i < 100; i++)
-                wait_frame();
+        uint8_t d = input_dirs();
+        uint8_t speed = (d & IN_FIRE) ? 16 : 4;
+
+        if (key_down(0xFBFE, 0x08)) { demo_on = 0; teleport(19036, 15755, 3); }  /* R */
+        if (key_down(0xDFFE, 0x04)) { demo_on = 0; teleport(5511, 33780, 8); }   /* I */
+        if (key_down(0xBFFE, 0x04)) { demo_on = 0; teleport(5511, 33780, 9); }   /* K */
+
+        if (d & (IN_UP | IN_DOWN | IN_LEFT | IN_RIGHT))
+            demo_on = 0;
+        if (demo_on) {
+            int8_t dx = demo[demo_step].dx;
+            if (demo_count == 0 && dx == DEMO_INDOOR) teleport(5511, 33780, 8);
+            else if (demo_count == 0 && dx == DEMO_DUNGEON) teleport(5511, 33780, 9);
+            else if (demo_count == 0 && dx == DEMO_START) teleport(19036, 15755, 3);
+            if (dx < DEMO_START) {
+                map_x += dx;
+                map_y += demo[demo_step].dy;
+            }
+            if (++demo_count == demo[demo_step].frames) {
+                demo_count = 0;
+                if (++demo_step == sizeof(demo) / sizeof(demo[0]))
+                    demo_step = 0;
+            }
+        } else {
+            if (d & IN_LEFT) map_x -= speed;
+            if (d & IN_RIGHT) map_x += speed;
+            if (d & IN_UP) map_y -= speed;
+            if (d & IN_DOWN) map_y += speed;
         }
-        if (narr_data[0] != '%') fail(1);     /* generated text is linked in */
+
+        last_region = region_num;
+        gen_mini();
+        if (region_num != last_region) {
+            set_region_palette();
+            view_invalidate();
+        }
+        view_update();
     }
 }

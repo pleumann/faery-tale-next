@@ -44,6 +44,16 @@ uint32_t file_read_pages(uint8_t h, uint8_t first_page, uint32_t len)
     return total;
 }
 
+uint16_t file_read_at(uint8_t h, uint8_t page, uint16_t offset, uint16_t len)
+{
+    uint16_t n;
+    errno = 0;
+    mmu_set(WINDOW_SLOT, page);
+    n = esx_f_read(h, WINDOW_ADDR + offset, len);
+    mmu_set(WINDOW_SLOT, DEFAULT_WINDOW_PAGE);
+    return n;
+}
+
 uint32_t file_load_pages(const char *name, uint8_t first_page)
 {
     uint32_t n;

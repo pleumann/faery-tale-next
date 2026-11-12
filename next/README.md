@@ -15,6 +15,18 @@ make run      # starts CSpect with build/sd as SD card root
 On real hardware copy the contents of `build/sd` (fta.nex and the FTA folder) to the same
 directory on the SD card and start fta.nex. Data paths are relative to that directory.
 
+## Current state (M2: map viewer)
+
+The NEX shows the playfield (288x140, like the Amiga viewport) with hardware scrolling.
+Without input it pans by itself: start village, 3000 px west into the next region,
+back, then a building interior and a dungeon. Keys take over at any time:
+
+| Key | Action |
+|---|---|
+| Q/A/O/P, cursor keys (5–8), Kempston joystick | scroll (SPACE / fire = faster) |
+| R | back to the start village |
+| I / K | indoor map with building / dungeon tiles |
+
 ## Layout
 
 - `tools/` – host tools: IFF reader, asset converter, PNG previews (`build/preview`)
@@ -26,11 +38,15 @@ directory on the SD card and start fta.nex. Data paths are relative to that dire
 | Slot | Address | Use |
 |---|---|---|
 | MMU0–1 | 0000–3FFF | ROM (needed for esxDOS calls); later banked code |
+| MMU1 | 2000–3FFF | temporarily: map/sector lookups (ROM restored afterwards) |
 | MMU2 | 4000–5FFF | data window for paged assets |
+| MMU3 | 6000–7FFF | Layer 2 write window |
 | MMU4–7 | 8000–FCFF | resident code + data, stack below FD00 |
 | | FD00–FEFF | IM2 vector table and interrupt jump |
 
-Layer 2 buffers: 16K banks 9–13 (pages 18–27) and 14–18 (pages 28–37).
+Layer 2: 16K banks 9–13 (pages 18–27), used as a 20 x 8 tile torus with hardware
+scrolling (only new tile columns/rows are drawn). Region data: tiles pages 40–55,
+sectors 56–59, region map + terrain page 60.
 
 ## Asset files (build/sd/FTA)
 
