@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "name": "z88dk zxn",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "${env:HOME}/Retro/z88dk/include/_DEVELOPMENT/sdcc"
+            ],
+            "defines": ["__ZXNEXT", "__SDCC", "__Z88DK"],
+            "cStandard": "c11"
+        }
+    ],
+    "version": 4
+}
