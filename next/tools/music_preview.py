@@ -16,6 +16,7 @@ VOL_AY = [0, 3, 5, 6, 7, 8, 8, 9, 9, 10, 10, 10, 10, 11, 11, 11,
           11, 11, 11, 12, 12, 12, 12, 12, 12, 12, 12, 13, 13, 13, 13, 13,
           13, 13, 13, 13, 13, 13, 13, 14, 14, 14, 14, 14, 14, 14, 14, 14,
           14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15]
+WAVE_OCTAVE = [0, 0, 0, 2, 0, 1, 0, 0]
 SONGS = ["day", "battle", "night", "intro", "astral", "indoor", "death"]
 OFF_PERIODS, OFF_NOTEVALS, OFF_ENV = 56, 224, 1376
 
@@ -70,7 +71,7 @@ def render(data, off, seconds, indoor_dungeon=False):
                         vc["vol"] = 0
                         vc["est"] = clock
                     else:
-                        vc["period"] = w(OFF_PERIODS + min(cmd, 83) * 2)
+                        vc["period"] = w(OFF_PERIODS + min(cmd, 83) * 2) >> WAVE_OCTAVE[vc["wave"] & 7]
                         vc["vol"] = min(vol, 64)
                     break
             elif clock - vc["est"] >= 0:

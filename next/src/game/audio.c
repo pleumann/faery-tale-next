@@ -54,6 +54,11 @@ static const uint16_t sample_size[6] = { 1012, 684, 786, 1604, 952, 550 };
 
 static uint8_t fx_frames, fx_left;
 
+/* Octaves to shift per Amiga waveform: waveform 5 is dominated by its 2nd/3rd harmonic,
+   waveform 3 by the 4th, so on the Amiga they sound higher than their fundamental, which
+   a plain AY square wave would play as a low hum. */
+static const uint8_t wave_octave[8] = { 0, 0, 0, 2, 0, 1, 0, 0 };
+
 static uint8_t mb(uint16_t off)
 {
     mmu_set(1, MUSIC_PAGE + (off >> 13));
@@ -186,7 +191,7 @@ newnote:
             return;
         }
         period = mw(MUSIC_OFF_PERIODS + (uint16_t)(cmd < 84 ? cmd : 83) * 2);
-        set_period(v, period);
+        set_period(v, period >> wave_octave[vc->wave_num & 7]);
         set_volume(v, vol);
         return;
     }
