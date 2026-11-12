@@ -263,6 +263,10 @@ void gen_mini(void)
     xr = (lregion > 7) ? 0 : (lregion & 1);
     xreg = (uint16_t)xr << 6;
     yreg = (uint16_t)yr << 5;
+
+    /* end of fsubs.asm _genmini: the sector the hero stands in (+256 indoors) - used
+       for the bridge occlusion rule, place names, drowning in sector 181, the stones */
+    hero_sector = world_hero_sector(hero_x, hero_y);
 }
 
 /* Sector number for tile coordinates, clamped to the loaded region like _genmini. */

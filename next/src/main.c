@@ -121,7 +121,7 @@ void main(void)
     pointer_init();
 
     for (;;) {                          /* one game per pass */
-#if defined(DEMO) || defined(TEST_DOOR) || defined(TEST_KEYS) || defined(DEBUG_DUMP) || defined(TEST_FEATURES) || defined(TEST_RESCUE)
+#if defined(DEMO) || defined(TEST_DOOR) || defined(TEST_KEYS) || defined(DEBUG_DUMP) || defined(TEST_FEATURES) || defined(TEST_RESCUE) || defined(TEST_BRIDGE)
     demo_on = 1;
 #else
     demo_on = 0;
@@ -136,6 +136,10 @@ void main(void)
     xfer(0x49d0 + 3, 0x3dc0 + 20, TRUE);    /* test: on the threshold of village house #1 */
     hero_x = anim_list[0].abs_x = 0x49d0 + 3;
     hero_y = anim_list[0].abs_y = 0x3dc0 + 20;
+    demo_on = 0;
+#endif
+#ifdef TEST_BRIDGE
+    xfer(18304, 16000, TRUE);           /* test: on the bridge west of Tambry (sector 48) */
     demo_on = 0;
 #endif
 #ifdef TEST_REGION
