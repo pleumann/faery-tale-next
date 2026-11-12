@@ -19,7 +19,7 @@ ZFLAGS   := +zxn -vn -SO3 -clib=sdcc_iy -startup=31 --max-allocs-per-node200000 
 
 SRCS     := src/main.c src/platform/hw.c src/platform/layer2.c src/platform/files.c \
             src/platform/input.c src/platform/irq.asm \
-            src/game/world.c src/game/view.c
+            src/game/world.c src/game/view.c src/game/actors.c src/game/sprites.c
 
 ASSETS   := $(SD)/FTA/TILES.DAT
 

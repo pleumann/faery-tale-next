@@ -1,4 +1,5 @@
 #include <arch/zxn.h>
+#include <string.h>
 #include "hw.h"
 #include "layer2.h"
 
@@ -13,6 +14,11 @@ void layer2_init(void)
     nextreg(NR_L2_YSCROLL, 0);
     layer2_clip(0, 0, 319, 255);
     layer2_show(L2_BANK_A);
+    for (uint8_t p = 0; p < 10; p++) {          /* clear the buffer */
+        mmu_set(3, L2_PAGE_A + p);
+        memset((uint8_t *)0x6000, 0, 8192);
+    }
+    mmu_set(3, 11);
     IO_LAYER_2_CONFIG = 0x02;           /* Layer 2 visible */
 }
 

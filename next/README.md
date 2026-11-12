@@ -15,15 +15,17 @@ make run      # starts CSpect with build/sd as SD card root
 On real hardware copy the contents of `build/sd` (fta.nex and the FTA folder) to the same
 directory on the SD card and start fta.nex. Data paths are relative to that directory.
 
-## Current state (M2: map viewer)
+## Current state (M3: hero)
 
-The NEX shows the playfield (288x140, like the Amiga viewport) with hardware scrolling.
-Without input it pans by itself: start village, 3000 px west into the next region,
-back, then a building interior and a dungeon. Keys take over at any time:
+Julian walks through the world as a hardware sprite (two 16x16 sprites, patterns
+double buffered), with the original collision (`prox`/`proxcheck`), deflection around
+obstacles, terrain effects (wading, sinking, ice) and occlusion behind trees and
+buildings via the shadow masks. The camera follows like `map_adjust`. The game loop
+runs at 25 Hz. Without input Julian walks a short demo path.
 
 | Key | Action |
 |---|---|
-| Q/A/O/P, cursor keys (5–8), Kempston joystick | scroll (SPACE / fire = faster) |
+| Q/A/O/P, cursor keys (5–8), Kempston joystick | walk (8 directions) |
 | R | back to the start village |
 | I / K | indoor map with building / dungeon tiles |
 
@@ -43,6 +45,9 @@ back, then a building interior and a dungeon. Keys take over at any time:
 | MMU3 | 6000–7FFF | Layer 2 write window |
 | MMU4–7 | 8000–FCFF | resident code + data, stack below FD00 |
 | | FD00–FEFF | IM2 vector table and interrupt jump |
+
+Sprites: patterns 0–31 / 32–63 alternate per frame; Julian's frames pages 64–68,
+shadow masks pages 61–62.
 
 Layer 2: 16K banks 9–13 (pages 18–27), used as a 20 x 8 tile torus with hardware
 scrolling (only new tile columns/rows are drawn). Region data: tiles pages 40–55,

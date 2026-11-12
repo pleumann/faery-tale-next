@@ -14,6 +14,7 @@
 
 void view_init(void);
 void view_invalidate(void);     /* force full redraw (region change, teleport) */
-void view_update(void);         /* bring Layer 2 up to date with map_x/map_y */
+void view_update(void);         /* draw new tiles for map_x/map_y (seams are off screen) */
+void view_scroll(void);         /* set the scroll registers - right after the vblank */
 
 #endif

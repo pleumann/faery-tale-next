@@ -7,6 +7,7 @@
 uint16_t map_x, map_y;
 uint8_t region_num = NO_REGION, new_region = NO_REGION;
 uint16_t xreg, yreg;
+uint16_t hero_sector;
 
 /* fmain.c:615 - struct need: image[4] (disk blocks), terra1, terra2, sector, region */
 struct need {
@@ -187,4 +188,24 @@ void map_adjust(uint16_t x, uint16_t y)
     else if (dy > 44) map_y = ty - 44;
     else if (dy < -10) map_y--;
     else if (dy > 10) map_y++;
+}
+
+uint8_t terra_byte(uint8_t tile, uint8_t idx)
+{
+    uint8_t v;
+    mmu_set(1, MAP_PAGE);
+    v = SLOT1[MAP_TERRA_OFF + ((uint16_t)tile << 2) + idx];
+    mmu_set(1, 0xFF);
+    return v;
+}
+
+uint16_t world_hero_sector(uint16_t x, uint16_t y)
+{
+    uint16_t sec;
+    mmu_set(1, MAP_PAGE);
+    sec = SLOT1[(uint8_t)(x >> 8) + ((((y >> 8) - yreg) & 31) << 7)];
+    mmu_set(1, 0xFF);
+    if (region_num > 7)
+        sec += 256;
+    return sec;
 }

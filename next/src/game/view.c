@@ -13,6 +13,7 @@
 
 static uint16_t ox, oy;         /* tile coordinates of the buffered 20 x 8 window */
 static uint8_t valid;
+static uint16_t scroll_x, scroll_y;
 
 void view_init(void)
 {
@@ -70,7 +71,6 @@ void view_update(void)
 {
     uint16_t vx0 = map_x >> 4, vx1 = (map_x + VIEW_W - 1) >> 4;
     uint16_t vy0 = map_y >> 5, vy1 = (map_y + VIEW_H - 1) >> 5;
-    uint16_t sx, sy;
 
     if (!valid || vx0 + 2 < ox || vx0 > ox + 2 || vy0 + 2 < oy || vy0 > oy + 3) {
         uint8_t c;
@@ -88,10 +88,13 @@ void view_update(void)
     restore_slots();
 
     /* screen pixel VIEW_X shows world pixel map_x */
-    sx = (map_x - VIEW_X) % 320;
-    sy = (map_y - VIEW_Y) & 255;
-    wait_frame();
-    nextreg(NR_L2_XSCROLL_LSB, (uint8_t)sx);
-    nextreg(NR_L2_XSCROLL_MSB, (uint8_t)(sx >> 8));
-    nextreg(NR_L2_YSCROLL, (uint8_t)sy);
+    scroll_x = (map_x - VIEW_X) % 320;
+    scroll_y = (map_y - VIEW_Y) & 255;
+}
+
+void view_scroll(void)
+{
+    nextreg(NR_L2_XSCROLL_LSB, (uint8_t)scroll_x);
+    nextreg(NR_L2_XSCROLL_MSB, (uint8_t)(scroll_x >> 8));
+    nextreg(NR_L2_YSCROLL, (uint8_t)scroll_y);
 }

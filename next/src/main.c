@@ -1,9 +1,9 @@
 /* The Faery Tale Adventure - ZX Spectrum Next port.
-   M2: map viewer - region loading, hardware-scrolled playfield.
+   M3: the hero walks through the world (hardware sprites, collision, occlusion).
 
-   Keys: Q/A/O/P or cursor keys (5-8) or joystick to scroll, SPACE/fire = fast,
+   Keys: Q/A/O/P or cursor keys (5-8) or joystick to walk (8 directions),
          R = back to the start village, I = inside buildings, K = dungeons.
-   Without input the view pans by itself (demo), any direction key takes over. */
+   Without input the hero walks by himself (demo), any direction key takes over. */
 
 #include <stdint.h>
 #include <z80.h>
@@ -16,6 +16,8 @@
 #include "platform/input.h"
 #include "game/world.h"
 #include "game/view.h"
+#include "game/actors.h"
+#include "game/sprites.h"
 
 /* fmain2.c:367 - colour 31 is set per region in fade_page() */
 static uint16_t pagecolors[32] = {
@@ -50,11 +52,13 @@ static void set_region_palette(void)
     else if (region_num == 9) pagecolors[31] = 0x0445;
     else pagecolors[31] = 0x0BDF;
     palette_load_rgb4(0, pagecolors, 32, 100);
+    sprites_palette(pagecolors, 100);
 }
 
-/* Jump to a place: (x, y) is the hero position, the camera centres on it. */
+/* Put the hero somewhere: the camera centres on it. */
 static void teleport(uint16_t x, uint16_t y, uint8_t region)
 {
+    actors_init_hero(x, y);
     map_x = x - 144;
     map_y = y - 70;
     new_region = region;
@@ -64,23 +68,18 @@ static void teleport(uint16_t x, uint16_t y, uint8_t region)
     view_invalidate();
 }
 
-#define DEMO_INDOOR  127    /* special dx values: teleport, then hold */
-#define DEMO_DUNGEON 126
-#define DEMO_START   125
-
-/* Demo pan: dx, dy per frame, number of frames. Holds of 250 frames at the start and
-   after crossing into region 2 (3000 px west) make screenshots comparable. */
-static const struct { int8_t dx, dy; uint8_t frames; } demo[] = {
-    { 0, 0, 250 },
-    { -8, 0, 125 }, { -8, 0, 125 }, { -8, 0, 125 }, { 0, 0, 250 },
-    { 0, 4, 100 },
-    { 8, 0, 125 }, { 8, 0, 125 }, { 8, 0, 125 }, { 0, -4, 100 },
-    { DEMO_INDOOR, 0, 250 }, { 0, 4, 100 }, { DEMO_DUNGEON, 0, 250 }, { DEMO_START, 0, 1 },
+/* Demo walk without input: direction (0 = NW .. 7 = W, 9 = stand), number of frames */
+static const uint8_t demo[][2] = {
+    { 9, 40 }, { 5, 30 }, { 3, 40 }, { 1, 40 }, { 7, 60 }, { 5, 20 }, { 4, 30 }, { 0, 30 },
 };
+
+/* com2 in fsubs.asm: directions from the stick, index 4 + 3*y + x */
+static const uint8_t com2[9] = { 0, 1, 2, 7, 9, 3, 6, 5, 4 };
 
 void main(void)
 {
-    uint8_t demo_on = 1, demo_step = 0, demo_count = 0, last_region, h;
+    uint8_t demo_on = 1, demo_step = 0, demo_count = 0, last_region, h, dir;
+    uint16_t next_frame;
 
     nextreg(NR_CPU_SPEED, 3);           /* 28 MHz */
     irq_init();
@@ -88,43 +87,42 @@ void main(void)
     palette_load_rgb4(0, pagecolors, 32, 0);
     view_init();
     world_init();
+    sprites_init();
 
     h = file_open("FTA/TILES.DAT");
     if (h == FILE_ERROR) fail(2);
     file_close(h);
+    if (!sprites_load_set(0, SHAPE_PAGE_PHIL)) fail(3);     /* Julian */
 
     teleport(19036, 15755, 3);          /* start village, fmain.c:2853 */
+    next_frame = frames;
 
     for (;;) {
         uint8_t d = input_dirs();
-        uint8_t speed = (d & IN_FIRE) ? 16 : 4;
+        int8_t jx = 0, jy = 0;
 
         if (key_down(0xFBFE, 0x08)) { demo_on = 0; teleport(19036, 15755, 3); }  /* R */
         if (key_down(0xDFFE, 0x04)) { demo_on = 0; teleport(5511, 33780, 8); }   /* I */
         if (key_down(0xBFFE, 0x04)) { demo_on = 0; teleport(5511, 33780, 9); }   /* K */
 
-        if (d & (IN_UP | IN_DOWN | IN_LEFT | IN_RIGHT))
+        if (d & IN_LEFT) jx = -1;
+        if (d & IN_RIGHT) jx = 1;
+        if (d & IN_UP) jy = -1;
+        if (d & IN_DOWN) jy = 1;
+        dir = com2[4 + 3 * jy + jx];
+        if (dir != 9)
             demo_on = 0;
         if (demo_on) {
-            int8_t dx = demo[demo_step].dx;
-            if (demo_count == 0 && dx == DEMO_INDOOR) teleport(5511, 33780, 8);
-            else if (demo_count == 0 && dx == DEMO_DUNGEON) teleport(5511, 33780, 9);
-            else if (demo_count == 0 && dx == DEMO_START) teleport(19036, 15755, 3);
-            if (dx < DEMO_START) {
-                map_x += dx;
-                map_y += demo[demo_step].dy;
-            }
-            if (++demo_count == demo[demo_step].frames) {
+            dir = demo[demo_step][0];
+            if (++demo_count == demo[demo_step][1]) {
                 demo_count = 0;
                 if (++demo_step == sizeof(demo) / sizeof(demo[0]))
                     demo_step = 0;
             }
-        } else {
-            if (d & IN_LEFT) map_x -= speed;
-            if (d & IN_RIGHT) map_x += speed;
-            if (d & IN_UP) map_y -= speed;
-            if (d & IN_DOWN) map_y += speed;
         }
+
+        hero_input(dir);
+        actors_update();
 
         last_region = region_num;
         gen_mini();
@@ -133,5 +131,14 @@ void main(void)
             view_invalidate();
         }
         view_update();
+        sprites_draw();
+
+        /* 25 Hz game loop; scroll registers and sprite attributes change in the vblank */
+        next_frame += 2;
+        while ((int16_t)(frames - next_frame) < 0)
+            ;
+        view_scroll();
+        sprites_flush();
+        cycle++;
     }
 }
