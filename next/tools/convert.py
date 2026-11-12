@@ -405,60 +405,116 @@ def convert_brush(game, name, out):
     out.png(name + ".png", img.pixels, [rgb4_to_rgb8(c) for c in gd.INTROCOLORS])
 
 
-def convert_hiscreen(game, out):
-    """640x57x4 status panel -> 8x8 4bpp tiles (deduplicated, incl. mirrored variants)
-    + 80x8 tilemap (2 bytes per entry: tile index low, attribute) for the 80-column tilemap."""
+def parse_dc_longs(asm_path, label):
+    """Bytes of the dc.l block following `label` in a 68000 asm file."""
+    data = bytearray()
+    active = False
+    for line in open(asm_path, encoding="latin-1"):
+        tok = line.split(";")[0].split()
+        if not tok:
+            continue
+        if not line[0].isspace():
+            if active:
+                break
+            active = tok[0] == label
+            tok = tok[1:]
+        if active and len(tok) >= 2 and tok[0].lower() == "dc.l":
+            for v in tok[1].split(","):
+                data += struct.pack(">I", int(v.strip().lstrip("$"), 16))
+    return data
+
+
+# fmain2.c:332 - comptable: highlighted rectangle per direction
+COMPTABLE = [(0, 0, 16, 8), (16, 0, 16, 9), (32, 0, 16, 8), (30, 8, 18, 8), (32, 16, 16, 8),
+             (16, 13, 16, 11), (0, 16, 16, 8), (0, 8, 18, 8), (0, 0, 1, 1), (0, 0, 1, 1)]
+COMPASS_X, COMPASS_Y = 567, 15
+PANEL_ROWS = 8
+CMP_COL, CMP_ROW, CMP_W, CMP_H = 70, 1, 8, 4      # tile area covering the compass
+
+
+def compass_variant(base, hinor, hivar, d):
+    """drawcompass(d): plane 2 of the 48x24 area from hinor, the direction rect from hivar."""
+    img = [bytearray(r) for r in base]
+    for y in range(24):
+        for x in range(48):
+            bit = (hinor[y * 8 + x // 8] >> (7 - x % 8)) & 1
+            v = img[COMPASS_Y + y][COMPASS_X + x]
+            img[COMPASS_Y + y][COMPASS_X + x] = (v & ~4) | (bit << 2)
+    if d < 9:
+        xr, yr, xs, ys = COMPTABLE[d]
+        for y in range(yr, yr + ys):
+            for x in range(xr, xr + xs):
+                bit = (hivar[y * 8 + x // 8] >> (7 - x % 8)) & 1
+                v = img[COMPASS_Y + y][COMPASS_X + x]
+                img[COMPASS_Y + y][COMPASS_X + x] = (v & ~4) | (bit << 2)
+    return img
+
+
+def convert_hiscreen(game, out, fsubs):
+    """640x57x4 status panel -> 8x8 4bpp tiles (deduplicated incl. mirrored variants),
+    an 80x8 tilemap (2 bytes per entry: tile low byte, attribute) and the tile entries
+    of the compass area for each direction (0-7, 8 = none).
+    HISCR.TIL tiles, HISCR.MAP map (no compass highlight), HISCR.CMP 9 x 8x4 entries."""
     img = read_ilbm(os.path.join(game, "hiscreen"))
-    rows = img.pixels + [bytearray(img.width)] * (64 - img.height)
+    rows = [bytearray(r) for r in img.pixels] + [bytearray(img.width) for _ in range(PANEL_ROWS * 8 - img.height)]
+    hinor = parse_dc_longs(fsubs, "_hinor")
+    hivar = parse_dc_longs(fsubs, "_hivar")
+    variants = [compass_variant(rows, hinor, hivar, d) for d in range(9)]
+    base = variants[8]
+
     tiles = []
     lookup = {}
-    tmap = bytearray()
 
     def pack(cell):
         return bytes((cell[i] << 4) | cell[i + 1] for i in range(0, 64, 2))
 
-    for ty in range(8):
+    def entry(image, tx, ty):
+        cell = [image[ty * 8 + y][tx * 8 + x] for y in range(8) for x in range(8)]
+        variants_ = [
+            (cell, 0),
+            ([cell[y * 8 + 7 - x] for y in range(8) for x in range(8)], 0x08),
+            ([cell[(7 - y) * 8 + x] for y in range(8) for x in range(8)], 0x04),
+            ([cell[(7 - y) * 8 + 7 - x] for y in range(8) for x in range(8)], 0x0C),
+        ]
+        for v, attr in variants_:
+            key = pack(v)
+            if key in lookup:
+                idx = lookup[key]
+                break
+        else:
+            idx, attr = len(tiles), 0
+            key = pack(cell)
+            lookup[key] = idx
+            tiles.append(key)
+        return bytes([idx & 0xFF, attr | (idx >> 8)])
+
+    tmap = bytearray()
+    for ty in range(PANEL_ROWS):
         for tx in range(80):
-            cell = [rows[ty * 8 + y][tx * 8 + x] for y in range(8) for x in range(8)]
-            variants = [
-                (cell, 0),
-                ([cell[y * 8 + 7 - x] for y in range(8) for x in range(8)], 0x08),          # X mirror
-                ([cell[(7 - y) * 8 + x] for y in range(8) for x in range(8)], 0x04),        # Y mirror
-                ([cell[(7 - y) * 8 + 7 - x] for y in range(8) for x in range(8)], 0x0C),    # both
-            ]
-            for v, attr in variants:
-                key = pack(v)
-                if key in lookup:
-                    idx = lookup[key]
-                    break
-            else:
-                idx, attr = len(tiles), 0
-                key = pack(cell)
-                lookup[key] = idx
-                tiles.append(key)
-            tmap += bytes([idx & 0xFF, attr | (idx >> 8)])
-    print(f"  hiscreen: {len(tiles)} unique 8x8 tiles (budget 512)")
-    assert len(tiles) <= 512
+            tmap += entry(base, tx, ty)
+    cmp = bytearray()
+    for d in range(9):
+        for ty in range(CMP_ROW, CMP_ROW + CMP_H):
+            for tx in range(CMP_COL, CMP_COL + CMP_W):
+                cmp += entry(variants[d], tx, ty)
+
+    used = set(v for r in rows for v in r) | set(v for img_ in variants for r in img_ for v in r)
+    transp = max(i for i in range(16) if i not in used)
+    print(f"  hiscreen: {len(tiles)} unique 8x8 tiles, transparent index {transp}")
     out.file("HISCR.TIL", b"".join(tiles))
     out.file("HISCR.MAP", tmap)
+    out.file("HISCR.CMP", cmp)
     out.file("HISCR.PAL", rgb4_palette_bytes(gd.TEXTCOLORS[:16]))
     out.define("HISCR_TILES", len(tiles))
+    out.define("HISCR_TRANSP", transp)
+    out.define("CMP_COL", CMP_COL)
+    out.define("CMP_ROW", CMP_ROW)
+    out.define("CMP_W", CMP_W)
+    out.define("CMP_H", CMP_H)
 
-    # round trip preview
-    prev = [bytearray(640) for _ in range(64)]
-    for ty in range(8):
-        for tx in range(80):
-            idx = tmap[(ty * 80 + tx) * 2] | ((tmap[(ty * 80 + tx) * 2 + 1] & 1) << 8)
-            attr = tmap[(ty * 80 + tx) * 2 + 1]
-            t = tiles[idx]
-            for y in range(8):
-                for x in range(8):
-                    sx = 7 - x if attr & 0x08 else x
-                    sy = 7 - y if attr & 0x04 else y
-                    b = t[sy * 4 + sx // 2]
-                    prev[ty * 8 + y][tx * 8 + x] = (b >> 4) if sx % 2 == 0 else (b & 15)
-    out.png("hiscreen.png", prev[:img.height], [rgb4_to_rgb8(c) for c in gd.TEXTCOLORS[:16]])
-    assert prev[:img.height] == [bytearray(r) for r in img.pixels], "hiscreen round trip"
+    # preview: the panel with compass pointing north-east
+    prev = [bytearray(r) for r in variants[2][:img.height]]
+    out.png("hiscreen.png", prev, [rgb4_to_rgb8(c) for c in gd.TEXTCOLORS[:16]])
 
 
 # --------------------------------------------------------------------------- main
@@ -486,7 +542,7 @@ def main():
     convert_fullscreen(game, "winpic", out)
     for name in ("p1a", "p1b", "p2a", "p2b", "p3a", "p3b"):
         convert_brush(game, name, out)
-    convert_hiscreen(game, out)
+    convert_hiscreen(game, out, os.path.join(game, "..", "fsubs.asm"))
     out.write_header()
 
 

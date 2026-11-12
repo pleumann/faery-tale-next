@@ -76,9 +76,5 @@ uint16_t rnd(uint16_t n)
 
 /* ---- stubs until M5/M6 ---- */
 
-void event(uint8_t n) { (void)n; }
-void speak(uint8_t n) { (void)n; }
-void print(const char *s) { (void)s; }
-void prq(uint8_t n) { (void)n; }
 void effect(uint8_t num, uint16_t period) { (void)num; (void)period; }
 void setmood(uint8_t now) { (void)now; }

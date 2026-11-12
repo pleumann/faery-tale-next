@@ -20,6 +20,8 @@
 #include "game/shapes.h"
 #include "game/state.h"
 #include "game/banked.h"
+#include "game/ui.h"
+#include "game/menus.h"
 
 /* Fatal error: hide Layer 2, show the ULA border in an error colour and
    the errno value as 8 attribute blocks (white = 1, MSB left). */
@@ -73,6 +75,7 @@ void main(void)
     uint16_t next_frame, img_x = 0xFFFF, img_y = 0xFFFF;
 
     nextreg(NR_CPU_SPEED, 3);           /* 28 MHz */
+    ui_font_from_rom();                 /* while the ROM is still at 0x0000 */
     irq_init();
     layer2_init();
     view_init();
@@ -84,7 +87,9 @@ void main(void)
     if (h == FILE_ERROR) fail(2);
     file_close(h);
 
+    ui_init();
     seed1 = 12345;                      /* TODO (M7): seed from the title screen */
+    menus_start();
     game_start();                       /* Julian, start village (revive) */
 #ifdef TEST_DOOR
     xfer(0x49d0 + 3, 0x3dc0 + 20, TRUE);    /* test: on the threshold of village house #1 */
@@ -120,7 +125,33 @@ void main(void)
         }
 
         if (demo_on && cycle == 60) debug_encounter();
-        if (key_down(0xFDFE, 0x04)) debug_encounter();         /* D: summon ogres (test) */
+        if (key_down(0xFDFE, 0x04) && key_down(0x7FFE, 0x02)) debug_encounter();  /* SYM+D: ogres (test) */
+
+        {
+            static uint8_t oldir = 0xFF;
+            uint8_t key = input_key();
+#ifdef TEST_KEYS
+            /* scripted key presses for automated checks: Items/List, then any key */
+            { static uint16_t loops; loops++;
+              if (loops == 40) key = 'I';         /* inventory before the ogres come */
+              if (loops == 140) key = 'X'; }
+#endif
+            if (key) {
+                demo_on = 0;
+                menu_key(key);
+            }
+            if (dir != oldir) { drawcompass(dir); oldir = dir; }
+        }
+
+        /* inventory picture or pause: wait for the next key (fmain.c:1365) */
+        if (viewstatus == 4 || viewstatus == 1 || paused()) {
+            if (viewstatus == 4 || viewstatus == 1) sprites_hide();
+            next_frame = frames + 2;
+            while ((int16_t)(frames - next_frame) < 0)
+                ;
+            continue;
+        }
+        if (viewstatus == 99) view_invalidate();
 
         hero_control(dir, fire);
         actors_update();

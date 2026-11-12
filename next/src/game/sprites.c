@@ -392,3 +392,13 @@ void sprites_flush_b(void)
     }
     last_sprites = next_sprite;
 }
+
+/* hide all sprites used last frame (inventory picture, map) */
+void sprites_hide_b(void)
+{
+    uint8_t j;
+    next_sprite = 0;
+    for (j = 0; j < last_sprites; j++)
+        set_sprite(j, 0, 0, 0, 0);
+    sprites_flush_b();
+}

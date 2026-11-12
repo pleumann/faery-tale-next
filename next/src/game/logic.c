@@ -9,6 +9,8 @@
 #include "actors.h"
 #include "shapes.h"
 #include "banked.h"
+#include "ui.h"
+#include "menus.h"
 
 /* fmain.c:45 */
 struct encounter {
@@ -128,7 +130,20 @@ void find_place_b(uint8_t flag)
 
     hero_sector &= 255;
     if (region_num > 7) hero_sector += 256;
-    /* TODO (M5): place_tbl / inside_tbl lookup and place name message (hero_place) */
+    {
+        uint8_t m = place_lookup((uint8_t)hero_sector, region_num > 7);
+        if (m == 4) {                               /* message number 4 -- the mountains */
+            if (region_num > 7) ;
+            else if (region_num & 1) m = 0;
+            else if (region_num > 3) m = 5;
+        }
+        if (new_region < NO_REGION || ((hero_x >> 8) - xreg) & 64 || ((hero_y >> 8) - yreg) & 32)
+            m = 0;
+        if (m && m != hero_place) {
+            hero_place = m;
+            if (flag) msg_place(region_num > 7, m);
+        }
+    }
 
     extn = extent_list;
     for (i = 0; i < EXT_COUNT; i++) {
@@ -231,7 +246,10 @@ static void aftermath(void)
     }
     if (anim_list[0].vitality < 1) ;
     else if (anim_list[0].vitality < 5 && dead) print("Bravely done!");
-    /* TODO (M5): "<n> foes were defeated in battle." / "... fled in retreat." */
+    else if (xtype < 50) {
+        if (dead) { print(""); prdec(dead, 1); print_cont("foes were defeated in battle."); }
+        if (flee) { print(""); prdec(flee, 1); print_cont("foes fled in retreat."); }
+    }
     /* TODO (M4+): turtle eggs -> get_turtle() */
 }
 
@@ -500,11 +518,25 @@ void revive_b(uint8_t new_hero)
     daynight = 8000; lightlevel = 300;
     hunger = fatigue = 0;
     anix = 3;
+    set_options();
     prq(7); prq(4);
     if (brother > 3) viewstatus = 2;
     else { viewstatus = 3; setmood(TRUE); }
     fiery_death = 0;
     xtype = 0;
+}
+
+/* fmain.c:3510 */
+void get_turtle_b(void)
+{
+    uint8_t i;
+    for (i = 0; i < 25; i++) {
+        set_loc();
+        if (px_to_im(encounter_x, encounter_y) == 5) break;
+    }
+    if (i == 25) return;
+    move_extent(1, encounter_x, encounter_y);
+    load_carrier_b(5);
 }
 
 /* Test helper: an ogre band around the hero right now (like a random encounter) */

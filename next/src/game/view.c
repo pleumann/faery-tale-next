@@ -4,6 +4,8 @@
 #include "../platform/layer2.h"
 #include "world.h"
 #include "view.h"
+#include "shapes.h"
+#include "actors.h"
 
 #define BUF_COLS    20          /* 320 / 16 */
 #define BUF_ROWS    8           /* 256 / 32 */
@@ -97,4 +99,38 @@ void view_scroll(void)
     nextreg(NR_L2_XSCROLL_LSB, (uint8_t)scroll_x);
     nextreg(NR_L2_XSCROLL_MSB, (uint8_t)(scroll_x >> 8));
     nextreg(NR_L2_YSCROLL, (uint8_t)scroll_y);
+}
+
+/* Clear the whole Layer 2 buffer (the playfield then needs a full redraw). */
+void view_clear(void)
+{
+    uint8_t p;
+    for (p = 0; p < 10; p++) {
+        mmu_set(3, L2_PAGE_A + p);
+        memset(DST, 0, 8192);
+    }
+    restore_slots();
+    valid = 0;
+}
+
+/* Draw rows [off, off+h) of object frame `frame` at playfield position (px, py),
+   colour 31 left out (fmain.c Items/List). */
+void view_blit_object(uint8_t frame, uint8_t off, uint8_t h, uint16_t px, uint8_t py)
+{
+    const struct seq_info *q = &seq_list[OBJECTS];
+    uint16_t src = (uint16_t)frame * 256;
+    uint8_t row, col, v;
+    uint16_t bx, by;
+    for (row = 0; row < h; row++) {
+        for (col = 0; col < 16; col++) {
+            mmu_set(2, q->page + (src >> 13));
+            v = SRC[(src & 0x1FFF) + (uint16_t)(off + row) * 16 + col];
+            if (v == 31) continue;
+            bx = (map_x + px + col) % 320;
+            by = (map_y + py + row) & 255;
+            mmu_set(3, L2_PAGE_A + (bx >> 5));
+            DST[((bx & 31) << 8) + by] = v;
+        }
+    }
+    restore_slots();
 }

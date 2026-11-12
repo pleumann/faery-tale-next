@@ -11,3 +11,4 @@
 #pragma output CRT_ORG_PAGE_83 = 0x0000
 #pragma output CRT_ORG_PAGE_84 = 0x0000
 #pragma output CRT_ORG_PAGE_85 = 0x0000
+#pragma output CRT_ORG_PAGE_86 = 0x0000

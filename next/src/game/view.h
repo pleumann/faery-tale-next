@@ -15,6 +15,8 @@
 void view_init(void);
 void view_invalidate(void);     /* force full redraw (region change, teleport) */
 void view_update(void);         /* draw new tiles for map_x/map_y (seams are off screen) */
-void view_scroll(void);         /* set the scroll registers - right after the vblank */
+void view_scroll(void);
+void view_clear(void);
+void view_blit_object(uint8_t frame, uint8_t off, uint8_t h, uint16_t px, uint8_t py);         /* set the scroll registers - right after the vblank */
 
 #endif

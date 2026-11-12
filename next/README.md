@@ -15,27 +15,33 @@ make run      # starts CSpect with build/sd as SD card root
 On real hardware copy the contents of `build/sd` (fta.nex and the FTA folder) to the same
 directory on the SD card and start fta.nex. Data paths are relative to that directory.
 
-## Current state (M4: game logic)
+## Current state (M5: user interface)
 
-The game logic of `fmain.c`/`fmain2.c` runs: all actor types (hero, enemies, set
-figures, objects, raft, carriers, dragon), enemy AI (goals/tactics), melee and missiles,
-death and revival, random and placed encounters, objects in the world, doors to the
-interiors (including locked doors), beds, day/night cycle with palette fades, hunger and
-fatigue. Text output, menus and sound are still stubs (M5/M6).
+The status panel is an 80-column tilemap below the playfield: the original panel
+graphics, the scrolling message area, status values, the option menus and the compass.
+Text uses the Spectrum ROM font (read from the ROM at 0x3D00), one character per tile,
+coloured through tilemap palette offsets. All messages of the original (events,
+speeches, place names) are shown; the menus work like on the Amiga (Items, Magic, Talk,
+Buy, Game, Use, Give, Keys), including taking and searching, buying, magic items and the
+inventory picture.
+
+Still missing: placards and the intro (M7), the magic map (M7), saving/loading (M7),
+sound (M6), mouse control.
 
 Without input Julian starts at the stone ring east of the village, a band of ogres is
-summoned and he fights when one comes close.
+summoned and he fights when one comes close. Any key ends the demo.
 
 | Key | Action |
 |---|---|
-| Q/A/O/P, cursor keys (5–8), Kempston joystick | walk (8 directions) |
-| SPACE / fire | fight (bow: aim while held, shoot on release) |
-| D | summon ogres (test) |
+| cursor keys (CAPS SHIFT + 5–8), Kempston joystick | walk (8 directions) |
+| 0 / fire | fight (bow: aim while held, shoot on release) |
+| letters as on the Amiga | menu commands: I list, T take, SYM+Z look (?), U use, G give, Y yell, S say, A ask, O/R/8/C/W/B/E buy, SPACE pause, M music, F sound, Q quit, V/X save/exit |
+| 1–7, K | use: weapons, lasso, shell, sunstone, keys |
+| SYMBOL SHIFT + 1–7 | magic items (Amiga F1–F7) |
+| SYMBOL SHIFT + D | summon ogres (test) |
 
-Building with `-DTEST_DOOR` starts on the threshold of a village house instead.
-
-Note: the resident area (0x8000–0xFCFF) is nearly full; further modules go into
-banked pages (see `src/platform/bank.h`).
+Builds with `-DTEST_DOOR` start on a door threshold, `-DTEST_KEYS` presses keys by
+script, `-DDEBUG_DUMP` writes the actor list for 60 frames to DEBUG.BIN.
 
 ## Layout
 
@@ -47,10 +53,9 @@ banked pages (see `src/platform/bank.h`).
 
 | Slot | Address | Use |
 |---|---|---|
-| MMU0 | 0000–1FFF | banked code pages 80–82 (logic, doors, objects); ROM during esxDOS calls |
+| MMU0 | 0000–1FFF | banked code pages 80–86 (logic, doors, objects, move, sprites, combat, menus); ROM during esxDOS calls |
 | MMU1 | 2000–3FFF | temporarily: map/sector lookups (ROM restored afterwards) |
-| MMU2 | 4000–5FFF | data window for paged assets |
-| MMU3 | 6000–7FFF | Layer 2 write window |
+| MMU2–3 | 4000–7FFF | bank 5 by default: tilemap (map at 4000, tiles at 4600); temporarily data windows |
 | MMU4–7 | 8000–FCFF | resident code + data, stack below FD00 |
 | | FD00–FEFF | IM2 vector table and interrupt jump |
 

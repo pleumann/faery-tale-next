@@ -6,6 +6,9 @@ uint8_t key_down(uint16_t port, uint8_t mask)
     return (z80_inp(port) & mask) ? 0 : 1;
 }
 
+#define CAPS() key_down(0xFEFE, 0x01)
+#define SYM()  key_down(0x7FFE, 0x02)
+
 uint8_t input_dirs(void)
 {
     uint8_t d = 0;
@@ -13,10 +16,61 @@ uint8_t input_dirs(void)
 
     if (joy == 0xFF)                    /* no joystick interface */
         joy = 0;
-    if (joy & 0x08 || key_down(0xFBFE, 0x01) || key_down(0xEFFE, 0x08)) d |= IN_UP;     /* Q, 7 */
-    if (joy & 0x04 || key_down(0xFDFE, 0x01) || key_down(0xEFFE, 0x10)) d |= IN_DOWN;   /* A, 6 */
-    if (joy & 0x02 || key_down(0xDFFE, 0x02) || key_down(0xF7FE, 0x10)) d |= IN_LEFT;   /* O, 5 */
-    if (joy & 0x01 || key_down(0xDFFE, 0x01) || key_down(0xEFFE, 0x04)) d |= IN_RIGHT;  /* P, 8 */
-    if (joy & 0x10 || key_down(0x7FFE, 0x01)) d |= IN_FIRE;                            /* SPACE */
+    if (joy & 0x08) d |= IN_UP;
+    if (joy & 0x04) d |= IN_DOWN;
+    if (joy & 0x02) d |= IN_LEFT;
+    if (joy & 0x01) d |= IN_RIGHT;
+    if (CAPS()) {
+        if (key_down(0xEFFE, 0x08)) d |= IN_UP;     /* 7 */
+        if (key_down(0xEFFE, 0x10)) d |= IN_DOWN;   /* 6 */
+        if (key_down(0xF7FE, 0x10)) d |= IN_LEFT;   /* 5 */
+        if (key_down(0xEFFE, 0x04)) d |= IN_RIGHT;  /* 8 */
+    }
+    else if (key_down(0xEFFE, 0x01)) d |= IN_FIRE;  /* 0 */
+    if (joy & 0x10) d |= IN_FIRE;
     return d;
+}
+
+/* keyboard matrix: 8 half rows, 5 keys each (bit 0 first) */
+static const uint16_t rows[8] = { 0xFEFE, 0xFDFE, 0xFBFE, 0xF7FE, 0xEFFE, 0xDFFE, 0xBFFE, 0x7FFE };
+static const char keymap[8][5] = {
+    {  0,  'Z', 'X', 'C', 'V' },
+    { 'A', 'S', 'D', 'F', 'G' },
+    { 'Q', 'W', 'E', 'R', 'T' },
+    { '1', '2', '3', '4', '5' },
+    { '0', '9', '8', '7', '6' },
+    { 'P', 'O', 'I', 'U', 'Y' },
+    { 13,  'L', 'K', 'J', 'H' },
+    { ' ',  0,  'M', 'N', 'B' },
+};
+
+static uint8_t last[8];
+
+uint8_t input_key(void)
+{
+    uint8_t r, b, now, pressed, result = 0;
+    uint8_t caps = CAPS(), sym = SYM();
+
+    for (r = 0; r < 8; r++) {
+        now = ~z80_inp(rows[r]) & 0x1F;
+        pressed = now & ~last[r];
+        last[r] = now;
+        if (!pressed || result || caps)
+            continue;
+        for (b = 0; b < 5; b++) {
+            if (pressed & (1 << b)) {
+                char c = keymap[r][b];
+                if (!c) continue;
+                if (sym) {
+                    if (c >= '1' && c <= '7') { result = 10 + (c - '1'); break; }
+                    if (c == 'Z') { result = '?'; break; }      /* SYMBOL SHIFT + Z = ':' -> look */
+                    continue;
+                }
+                if (c == '0') continue;                         /* fight key, see input_dirs */
+                result = c;
+                break;
+            }
+        }
+    }
+    return result;
 }

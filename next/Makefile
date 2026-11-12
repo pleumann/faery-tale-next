@@ -20,13 +20,13 @@ ZFLAGS   := +zxn -vn -SO3 -clib=sdcc_iy -startup=31 --max-allocs-per-node20000 \
 SRCS     := src/main.c src/platform/hw.c src/platform/layer2.c src/platform/files.c \
             src/platform/input.c src/platform/irq.asm \
             src/game/world.c src/game/view.c src/game/actors.c \
-            src/game/state.c src/game/shapes.c src/game/glue.c
+            src/game/state.c src/game/shapes.c src/game/glue.c src/game/ui.c
 
 # banked modules: file -> 8K page (org 0x0000, run in MMU slot 0, see platform/bank.h)
-BANKED   := logic:80 doors:81 objects:82 move:83 sprites:84 combat:85
+BANKED   := logic:80 doors:81 objects:82 move:83 sprites:84 combat:85 menus:86
 BANK_OBJS := $(foreach b,$(BANKED),$(BUILD)/obj/$(word 1,$(subst :, ,$(b))).o)
 
-HEADERS  := $(wildcard src/*.h src/*/*.h) src/zpragma.inc
+HEADERS  := $(wildcard src/*.h src/*/*.h) src/zpragma.inc $(GEN)/narr.h
 
 ASSETS   := $(SD)/FTA/TILES.DAT
 
@@ -49,8 +49,9 @@ $(SD)/fta.nex: $(SRCS) $(BANK_OBJS) $(ASSETS) $(HEADERS)
 $(ASSETS): tools/*.py $(wildcard $(GAME)/*) ../narr.asm
 	$(PYTHON) tools/convert.py $(GAME) $(SD) $(PREVIEW) $(GEN)
 
-$(GEN)/narr.c: ../narr.asm tools/narr2c.py
-	$(PYTHON) tools/narr2c.py $< $(GEN)
+$(GEN)/narr.h: ../narr.asm tools/narr2c.py
+	@mkdir -p $(SD)/FTA
+	$(PYTHON) tools/narr2c.py $< $(GEN) $(SD)/FTA/NARR.DAT
 
 run: all
 	cd $(SD) && mono $(CSPECT) -w3 -zxnext -s28 -mmc=$(CURDIR)/$(SD)/ -map=$(CURDIR)/$(BUILD)/obj/fta.map fta.nex

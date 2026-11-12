@@ -14,6 +14,7 @@
 #define PAGE_MOVE       83      /* game/move.c    - actor loop, combat */
 #define PAGE_DRAW       84      /* game/sprites.c - actors as hardware sprites */
 #define PAGE_COMBAT     85      /* game/combat.c  - melee, missiles, depth sort */
+#define PAGE_MENU       86      /* game/menus.c   - option menus */
 
 extern uint8_t cur_bank;        /* page in slot 0 (ROM_PAGE when no banked code runs) */
 

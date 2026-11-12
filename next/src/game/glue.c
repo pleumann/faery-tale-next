@@ -8,6 +8,7 @@
 #include "sprites.h"
 #include "banked.h"
 #include "actors.h"
+#include "menus.h"
 
 /* ---- banked entry points: functions with suffix _b live in the named page ---- */
 
@@ -80,6 +81,23 @@ void sprites_init(void) { BANK_ENTER(PAGE_DRAW); sprites_init_b(); BANK_LEAVE();
 void sprites_palette(const uint16_t *rgb4, uint8_t pct) { BANK_ENTER(PAGE_DRAW); sprites_palette_b(rgb4, pct); BANK_LEAVE(); }
 void sprites_draw(void) { BANK_ENTER(PAGE_DRAW); sprites_draw_b(); BANK_LEAVE(); }
 void sprites_flush(void) { BANK_ENTER(PAGE_DRAW); sprites_flush_b(); BANK_LEAVE(); }
+void sprites_hide_b(void);
+void sprites_hide(void) { BANK_ENTER(PAGE_DRAW); sprites_hide_b(); BANK_LEAVE(); }
+
+void menu_key_b(uint8_t key);
+void print_options_b(void);
+void set_options_b(void);
+uint8_t paused_b(void);
+void menus_start_b(void);
+void show_inventory_b(void);
+void get_turtle_b(void);
+void menu_key(uint8_t key) { BANK_ENTER(PAGE_MENU); menu_key_b(key); BANK_LEAVE(); }
+void print_options(void) { BANK_ENTER(PAGE_MENU); print_options_b(); BANK_LEAVE(); }
+void set_options(void) { BANK_ENTER(PAGE_MENU); set_options_b(); BANK_LEAVE(); }
+uint8_t paused(void) { uint8_t r; BANK_ENTER(PAGE_MENU); r = paused_b(); BANK_LEAVE(); return r; }
+void menus_start(void) { BANK_ENTER(PAGE_MENU); menus_start_b(); BANK_LEAVE(); }
+void show_inventory(void) { BANK_ENTER(PAGE_MENU); show_inventory_b(); BANK_LEAVE(); }
+void get_turtle(void) { BANK_ENTER(PAGE_LOGIC); get_turtle_b(); BANK_LEAVE(); }
 
 /* ---- shared helpers ---- */
 
@@ -113,6 +131,7 @@ static const int8_t setfig_table[14][3] = {
 
 int8_t setfig_image_base(uint8_t id) { return setfig_table[id][1]; }
 uint8_t setfig_cfile(uint8_t id) { return (uint8_t)setfig_table[id][0]; }
+uint8_t setfig_can_talk(uint8_t id) { return (uint8_t)setfig_table[id][2]; }
 
 /* fmain2.c:367 */
 uint16_t pagecolors[32] = {
