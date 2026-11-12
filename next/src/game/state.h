@@ -86,6 +86,7 @@ extern struct missile missile_list[6];
 extern struct extent extent_list[];
 extern struct extent *extn;
 extern uint8_t keyfight;
+extern uint8_t leave_program;      /* Quit in the Save/Exit menu: reset the machine */
 
 /* random numbers - fsubs.asm _rand */
 extern uint32_t seed1;

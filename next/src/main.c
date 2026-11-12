@@ -285,5 +285,14 @@ void main(void)
 #endif
         cycle++;
     }
+    if (leave_program) {
+        /* Quit: there is no way back to BASIC (ROM, bank 5 and system variables are in
+           use), so do what the user expects from leaving a program on the Next: a soft
+           reset into the NextZXOS menu (NR 0x02 bit 0) */
+        fade_down();
+        nextreg(0x02, 0x01);
+        for (;;)
+            ;
+    }
     }
 }

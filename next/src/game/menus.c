@@ -550,7 +550,7 @@ pickup:
         gomenu(ITEMS);
         break;
     case SAVEX:
-        if (hit == 6) quitflag = TRUE;
+        if (hit == 6) { quitflag = TRUE; leave_program = TRUE; }
         if (hit == 5) { svflag = 1; gomenu(FILE_); }
         break;
     case FILE_:

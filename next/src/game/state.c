@@ -28,6 +28,7 @@ uint8_t anix2, mdex;
 uint8_t anim_index[20];
 struct missile missile_list[6];
 uint8_t keyfight;
+uint8_t leave_program;
 
 /* fmain.c:338 - extents (modified at run time by move_extent) */
 struct extent extent_list[] = {
