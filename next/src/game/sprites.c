@@ -35,6 +35,9 @@ static uint8_t pat_base;
 
 struct attr { uint8_t x, y, a2, a3; };
 static struct attr attrs[64];
+#ifdef DEBUG_DUMP
+uint8_t dbg_frame[20];
+#endif
 
 void sprites_init(void)
 {
@@ -283,7 +286,12 @@ newpass:
             }
             else inum = statelist[inum].figure;
             if (an->race == 4) { if (an->state < DYING) inum += 0x24; }
-            else if (i > 0) { if (an->race & 1) inum |= 1; else inum &= 0xfffe; }
+            else if (i > 0) {
+                /* the file holds two races in even/odd frames (e.g. ogre/orc) */
+                uint8_t f = (uint8_t)inum;
+                f = (an->race & 1) ? (f | 1) : (f & 0xFE);
+                inum = f;
+            }
         }
         if (atype == OBJECTS && an->race == 0) goto offscreen;     /* hidden object */
         if (atype == CARRIER && riding == 0 && actor_file == 11) { atype = RAFT; inum = 1; }
@@ -329,6 +337,9 @@ rte:
     if (atype == OBJECTS && (inum & 128)) { inum &= 0x7f; skip = 8; }
     if (inum < 0 || inum >= q->frames)
         goto offscreen;
+#ifdef DEBUG_DUMP
+    if (passmode == 0) dbg_frame[i] = (uint8_t)inum;
+#endif
     fetch_frame(q, (uint8_t)inum, skip);
     if (ystop - ystart + 1 < q->hcells * 16)
         cut_rows((uint8_t)(ystop - ystart + 1));

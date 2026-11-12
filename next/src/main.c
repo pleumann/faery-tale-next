@@ -50,6 +50,23 @@ static const uint8_t demo[][2] = {
 /* com2 in fsubs.asm: directions from the stick, index 4 + 3*y + x */
 static const uint8_t com2[9] = { 0, 1, 2, 7, 9, 3, 6, 5, 4 };
 
+#ifdef DEBUG_DUMP
+#include <arch/zxn/esxdos.h>
+extern uint8_t dbg_frame[20];
+static uint8_t dbg_h = 0xFF;
+static void debug_dump(void)
+{
+    if (dbg_h == 0xFF) {
+        mmu_set(0, 0xFF);
+        dbg_h = esx_f_open("DEBUG.BIN", ESX_MODE_W | ESX_MODE_OPEN_CREAT_TRUNC);
+    }
+    esx_f_write(dbg_h, &cycle, 1);
+    esx_f_write(dbg_h, &anix, 1);
+    esx_f_write(dbg_h, anim_list, sizeof(anim_list));
+    esx_f_write(dbg_h, dbg_frame, 20);
+}
+#endif
+
 void main(void)
 {
     uint8_t demo_on = 1, demo_step = 0, demo_count = 0, last_region, h, dir, fire;
@@ -135,6 +152,10 @@ void main(void)
             ;
         view_scroll();
         sprites_flush();
+#ifdef DEBUG_DUMP
+        if (frames > 500 && frames < 560) debug_dump();
+        if (frames >= 560 && dbg_h != 0xFF) { esx_f_close(dbg_h); dbg_h = 0xFE; }
+#endif
         cycle++;
     }
 }
