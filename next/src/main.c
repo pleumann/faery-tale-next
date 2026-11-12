@@ -121,7 +121,7 @@ void main(void)
     pointer_init();
 
     for (;;) {                          /* one game per pass */
-#if defined(DEMO) || defined(TEST_DOOR) || defined(TEST_KEYS) || defined(DEBUG_DUMP) || defined(TEST_FEATURES)
+#if defined(DEMO) || defined(TEST_DOOR) || defined(TEST_KEYS) || defined(DEBUG_DUMP) || defined(TEST_FEATURES) || defined(TEST_RESCUE)
     demo_on = 1;
 #else
     demo_on = 0;
@@ -230,6 +230,11 @@ void main(void)
               if (loops == 120) key = 'X';
               if (loops == 140) { new_region = 8; xfer(11013, 36804 + 60, FALSE); find_place(2); }
             }
+#endif
+#ifdef TEST_RESCUE
+            /* scripted check: walk into the princess's cell (extent 83) */
+            { static uint16_t loops; loops++;
+              if (loops == 2) { new_region = 8; xfer(10850, 35660, FALSE); find_place(2); } }
 #endif
 #ifdef TEST_KEYS
             /* scripted key presses for automated checks: Items/List, then any key */
