@@ -4,11 +4,18 @@
 
 #include <stdint.h>
 
-/* Load a whole file into consecutive 8K pages starting at first_page.
-   Returns number of bytes read, or 0 on error. */
-uint32_t file_load_pages(const char *name, uint8_t first_page);
+#define FILE_ERROR 0xFF
 
-/* Load up to len bytes of a file into a normal (unbanked) address. */
+/* Open for reading; returns a handle or FILE_ERROR (errno holds the esxDOS code). */
+uint8_t file_open(const char *name);
+void file_close(uint8_t h);
+uint8_t file_seek(uint8_t h, uint32_t pos);          /* 0 on success */
+
+/* Read len bytes into consecutive 8K pages starting at first_page. Returns bytes read. */
+uint32_t file_read_pages(uint8_t h, uint8_t first_page, uint32_t len);
+
+/* Whole-file convenience helpers. */
+uint32_t file_load_pages(const char *name, uint8_t first_page);
 uint16_t file_load(const char *name, void *dst, uint16_t len);
 
 #endif

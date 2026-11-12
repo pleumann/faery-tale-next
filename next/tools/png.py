@@ -20,3 +20,15 @@ def write_png(path, rows, palette):
         f.write(_chunk(b"PLTE", pal))
         f.write(_chunk(b"IDAT", zlib.compress(raw, 9)))
         f.write(_chunk(b"IEND", b""))
+
+
+def write_png_rgb(path, rows):
+    """rows: list of rows, each a list/bytes of r,g,b triples flattened (3 bytes per pixel)."""
+    height = len(rows)
+    width = len(rows[0]) // 3
+    raw = b"".join(b"\x00" + bytes(r) for r in rows)
+    with open(path, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n")
+        f.write(_chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)))
+        f.write(_chunk(b"IDAT", zlib.compress(raw, 9)))
+        f.write(_chunk(b"IEND", b""))
