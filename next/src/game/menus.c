@@ -9,6 +9,7 @@
 #include "banked.h"
 #include "ui.h"
 #include "menus.h"
+#include "audio.h"
 #include "view.h"
 
 enum cmodes { ITEMS = 0, MAGIC, TALK, BUY, GAME, SAVEX, KEYS, GIVE, USE, FILE_ };
@@ -524,6 +525,7 @@ pickup:
         }
         break;
     case GAME:
+        audio_options(menus[GAME].enabled[6] & 1, menus[GAME].enabled[7] & 1);
         if (hit == 6) setmood(TRUE);
         if (hit == 8) gomenu(SAVEX);
         if (hit == 9) { print("(loading not yet available)"); }   /* TODO (M7) */
@@ -598,6 +600,31 @@ void menu_key_b(uint8_t key)
         if (key >= '1' && key <= '6') do_option(key - '1' + 5);
         else gomenu(ITEMS);
         return;
+    }
+    /* Port addition: submenus whose entries have no key on the Amiga (mouse only) -
+       digits select the n-th entry of Give and Files, 8/9 the sunstone and book in Use. */
+    if (key >= '1' && key <= '9' && notpause) {
+        uint8_t n = key - '1', first = (cmode >= USE) ? 0 : 5;
+        if (cmode == GIVE || cmode == FILE_) {
+            for (i = first; i < menus[cmode].num; i++) {
+                if ((menus[cmode].enabled[i] & 2) == 0) continue;
+                if (n-- == 0) {
+                    hit = i;
+                    hitgo = menus[cmode].enabled[hit] & 2;
+                    do_option(hit);
+                    print_options_b();
+                    break;
+                }
+            }
+            return;
+        }
+        if (cmode == USE && (key == '8' || key == '9')) {
+            hit = key == '8' ? 8 : 9;
+            hitgo = menus[cmode].enabled[hit] & 2;
+            do_option(hit);
+            print_options_b();
+            return;
+        }
     }
     if (key == ' ' || notpause) {
         for (i = 0; i < LMENUS; i++) {

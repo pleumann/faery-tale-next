@@ -74,7 +74,4 @@ uint16_t rnd(uint16_t n)
     return rand16() % n;
 }
 
-/* ---- stubs until M5/M6 ---- */
 
-void effect(uint8_t num, uint16_t period) { (void)num; (void)period; }
-void setmood(uint8_t now) { (void)now; }

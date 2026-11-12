@@ -25,8 +25,17 @@ speeches, place names) are shown; the menus work like on the Amiga (Items, Magic
 Buy, Game, Use, Give, Keys), including taking and searching, buying, magic items and the
 inventory picture.
 
+Music and sound (M6): the four-voice score player of `gdriver.asm` runs once per frame
+on the AY chips (voices 0–2 on AY 1, voice 3 on AY 2 channel A); the moods of the
+original (day, night, battle, indoors, astral plane, death) switch like in `setmood`.
+The Amiga waveforms become AY square tones. Sound effects are noise bursts on AY 2
+channel C, as long as the original samples (a DAC version of the samples can follow).
+`make music-preview` renders all songs as WAV files into `build/preview` with the same
+rules, to listen on the host.
+
 Still missing: placards and the intro (M7), the magic map (M7), saving/loading (M7),
-sound (M6), mouse control.
+mouse control (M7). In the Give and Files submenus the digits 1–8 select the n-th entry,
+in the Use menu 8/9 are the sunstone and the book (mouse-only on the Amiga).
 
 Without input Julian starts at the stone ring east of the village, a band of ogres is
 summoned and he fights when one comes close. Any key ends the demo.

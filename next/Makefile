@@ -23,7 +23,7 @@ SRCS     := src/main.c src/platform/hw.c src/platform/layer2.c src/platform/file
             src/game/state.c src/game/shapes.c src/game/glue.c src/game/ui.c
 
 # banked modules: file -> 8K page (org 0x0000, run in MMU slot 0, see platform/bank.h)
-BANKED   := logic:80 doors:81 objects:82 move:83 sprites:84 combat:85 menus:86
+BANKED   := logic:80 doors:81 objects:82 move:83 sprites:84 combat:85 menus:86 audio:87
 BANK_OBJS := $(foreach b,$(BANKED),$(BUILD)/obj/$(word 1,$(subst :, ,$(b))).o)
 
 HEADERS  := $(wildcard src/*.h src/*/*.h) src/zpragma.inc $(GEN)/narr.h
@@ -56,7 +56,10 @@ $(GEN)/narr.h: ../narr.asm tools/narr2c.py
 run: all
 	cd $(SD) && mono $(CSPECT) -w3 -zxnext -s28 -mmc=$(CURDIR)/$(SD)/ -map=$(CURDIR)/$(BUILD)/obj/fta.map fta.nex
 
+music-preview: $(ASSETS)
+	$(PYTHON) tools/music_preview.py $(SD)/FTA/MUSIC.DAT $(PREVIEW) 30
+
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all assets run clean
+.PHONY: all assets run clean music-preview

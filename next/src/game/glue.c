@@ -9,6 +9,9 @@
 #include "banked.h"
 #include "actors.h"
 #include "menus.h"
+#include "audio.h"
+#include "assets.h"
+#include "../platform/files.h"
 
 /* ---- banked entry points: functions with suffix _b live in the named page ---- */
 
@@ -98,6 +101,41 @@ uint8_t paused(void) { uint8_t r; BANK_ENTER(PAGE_MENU); r = paused_b(); BANK_LE
 void menus_start(void) { BANK_ENTER(PAGE_MENU); menus_start_b(); BANK_LEAVE(); }
 void show_inventory(void) { BANK_ENTER(PAGE_MENU); show_inventory_b(); BANK_LEAVE(); }
 void get_turtle(void) { BANK_ENTER(PAGE_LOGIC); get_turtle_b(); BANK_LEAVE(); }
+
+void audio_init_b(void);
+void audio_tick_b(void);
+void effect_b(uint8_t num, uint16_t period);
+void setmood_b(uint8_t now);
+void audio_options_b(uint8_t music, uint8_t sound);
+void stopscore_b(void);
+
+void audio_init(void)
+{
+    uint8_t h = file_open("FTA/MUSIC.DAT");
+    if (h != FILE_ERROR) {
+        file_read_pages(h, 76, MUSIC_SIZE);
+        file_close(h);
+    }
+    BANK_ENTER(PAGE_AUDIO); audio_init_b(); BANK_LEAVE();
+}
+
+static uint16_t audio_frame;
+
+void audio_update(void)
+{
+    uint8_t n = 0;
+    while (audio_frame != frames && n < 4) {
+        audio_frame++;
+        n++;
+        BANK_ENTER(PAGE_AUDIO); audio_tick_b(); BANK_LEAVE();
+    }
+    audio_frame = frames;
+}
+
+void effect(uint8_t num, uint16_t period) { BANK_ENTER(PAGE_AUDIO); effect_b(num, period); BANK_LEAVE(); }
+void setmood(uint8_t now) { BANK_ENTER(PAGE_AUDIO); setmood_b(now); BANK_LEAVE(); }
+void audio_options(uint8_t music, uint8_t sound) { BANK_ENTER(PAGE_AUDIO); audio_options_b(music, sound); BANK_LEAVE(); }
+void stopscore(void) { BANK_ENTER(PAGE_AUDIO); stopscore_b(); BANK_LEAVE(); }
 
 /* ---- shared helpers ---- */
 

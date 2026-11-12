@@ -22,6 +22,7 @@
 #include "game/banked.h"
 #include "game/ui.h"
 #include "game/menus.h"
+#include "game/audio.h"
 
 /* Fatal error: hide Layer 2, show the ULA border in an error colour and
    the errno value as 8 attribute blocks (white = 1, MSB left). */
@@ -66,6 +67,15 @@ static void debug_dump(void)
     esx_f_write(dbg_h, &anix, 1);
     esx_f_write(dbg_h, anim_list, sizeof(anim_list));
     esx_f_write(dbg_h, dbg_frame, 20);
+    {   /* AY 1 and AY 2 registers 0..10 */
+        uint8_t ayr[22], c, r;
+        for (c = 0; c < 2; c++) {
+            z80_outp(0xFFFD, c ? 0xFE : 0xFF);
+            for (r = 0; r < 11; r++) { z80_outp(0xFFFD, r); ayr[c * 11 + r] = z80_inp(0xFFFD); }
+        }
+        z80_outp(0xFFFD, 0xFF);
+        esx_f_write(dbg_h, ayr, 22);
+    }
 }
 #endif
 
@@ -88,6 +98,7 @@ void main(void)
     file_close(h);
 
     ui_init();
+    audio_init();
     seed1 = 12345;                      /* TODO (M7): seed from the title screen */
     menus_start();
     game_start();                       /* Julian, start village (revive) */
@@ -148,7 +159,7 @@ void main(void)
             if (viewstatus == 4 || viewstatus == 1) sprites_hide();
             next_frame = frames + 2;
             while ((int16_t)(frames - next_frame) < 0)
-                ;
+                audio_update();
             continue;
         }
         if (viewstatus == 99) view_invalidate();
@@ -180,7 +191,8 @@ void main(void)
         /* 25 Hz game loop; scroll registers and sprite attributes change in the vblank */
         next_frame += 2;
         while ((int16_t)(frames - next_frame) < 0)
-            ;
+            audio_update();
+        audio_update();
         view_scroll();
         sprites_flush();
 #ifdef DEBUG_DUMP
