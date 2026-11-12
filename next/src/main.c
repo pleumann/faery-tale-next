@@ -82,11 +82,13 @@ static void debug_dump(void)
     esx_f_write(dbg_h, dbg_frame, 20);
     {   /* AY 1 and AY 2 registers 0..10 */
         uint8_t ayr[22], c, r;
+        crit_enter();                   /* the music player writes the AY in the ISR */
         for (c = 0; c < 2; c++) {
             z80_outp(0xFFFD, c ? 0xFE : 0xFF);
             for (r = 0; r < 11; r++) { z80_outp(0xFFFD, r); ayr[c * 11 + r] = z80_inp(0xFFFD); }
         }
         z80_outp(0xFFFD, 0xFF);
+        crit_leave();
         esx_f_write(dbg_h, ayr, 22);
     }
 }

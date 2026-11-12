@@ -34,6 +34,11 @@
 #define WINDOW_SLOT         2
 #define WINDOW_ADDR         ((uint8_t *)0x4000)
 
+/* nesting critical sections (interrupts off) - see hw.c */
+extern uint8_t crit;
+void crit_enter(void);
+void crit_leave(void);
+
 void nextreg(uint8_t reg, uint8_t val);
 uint8_t nextreg_read(uint8_t reg);
 void mmu_set(uint8_t slot, uint8_t page);

@@ -121,6 +121,10 @@ void setmood_b(uint8_t now);
 void audio_options_b(uint8_t music, uint8_t sound);
 void stopscore_b(void);
 
+uint8_t music_irq_on;
+/* calls into the player from the main program: interrupts off meanwhile */
+#define AUDIO_CALL(x) do { crit_enter(); { BANK_ENTER(PAGE_AUDIO); x; BANK_LEAVE(); } crit_leave(); } while (0)
+
 void audio_init(void)
 {
     uint8_t h = file_open("FTA/MUSIC.DAT");
@@ -128,29 +132,36 @@ void audio_init(void)
         file_read_pages(h, 76, MUSIC_SIZE);
         file_close(h);
     }
-    BANK_ENTER(PAGE_AUDIO); audio_init_b(); BANK_LEAVE();
+    AUDIO_CALL(audio_init_b());
+    music_irq_on = 1;
 }
 
-static uint16_t audio_frame;
+/* The music player runs in the frame interrupt (irq.asm calls music_isr). It maps its
+   code page into slot 0 and its data into slot 1 and restores both afterwards; during
+   esxDOS calls it skips (the ROM and DivMMC must stay mapped). */
+extern uint8_t in_esx;
 
-void audio_update(void)
+void music_isr(void)
 {
-    uint8_t n = 0;
-    while (audio_frame != frames && n < 4) {
-        audio_frame++;
-        n++;
-        BANK_ENTER(PAGE_AUDIO); audio_tick_b(); BANK_LEAVE();
-    }
-    audio_frame = frames;
+    uint8_t m0, m1;
+    if (!music_irq_on || in_esx) return;
+    m0 = nextreg_read(NR_MMU0);
+    m1 = nextreg_read(NR_MMU0 + 1);
+    mmu_set(0, PAGE_AUDIO);
+    audio_tick_b();
+    mmu_set(0, m0);
+    mmu_set(1, m1);
 }
 
-void effect(uint8_t num, uint16_t period) { BANK_ENTER(PAGE_AUDIO); effect_b(num, period); BANK_LEAVE(); }
-void setmood(uint8_t now) { BANK_ENTER(PAGE_AUDIO); setmood_b(now); BANK_LEAVE(); }
-void audio_options(uint8_t music, uint8_t sound) { BANK_ENTER(PAGE_AUDIO); audio_options_b(music, sound); BANK_LEAVE(); }
-void stopscore(void) { BANK_ENTER(PAGE_AUDIO); stopscore_b(); BANK_LEAVE(); }
+void audio_update(void) { }             /* the player runs in the interrupt now */
+
+void effect(uint8_t num, uint16_t period) { AUDIO_CALL(effect_b(num, period)); }
+void setmood(uint8_t now) { AUDIO_CALL(setmood_b(now)); }
+void audio_options(uint8_t music, uint8_t sound) { AUDIO_CALL(audio_options_b(music, sound)); }
+void stopscore(void) { AUDIO_CALL(stopscore_b()); }
 
 void music_play_b(uint8_t off);
-void music_play(uint8_t off) { BANK_ENTER(PAGE_AUDIO); music_play_b(off); BANK_LEAVE(); }
+void music_play(uint8_t off) { AUDIO_CALL(music_play_b(off)); }
 
 void font_load_b(void);
 void map_message_b(void);

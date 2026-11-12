@@ -7,8 +7,9 @@
 uint8_t cur_bank = ROM_PAGE;
 
 /* esxDOS is reached through RST 8 in the ROM: banked code in slot 0 must step aside. */
-#define ROM_IN()   mmu_set(0, ROM_PAGE)
-#define ROM_OUT()  mmu_set(0, cur_bank)
+uint8_t in_esx;                 /* the ISR must not remap memory during esxDOS calls */
+#define ROM_IN()   do { in_esx = 1; mmu_set(0, ROM_PAGE); } while (0)
+#define ROM_OUT()  do { mmu_set(0, cur_bank); in_esx = 0; } while (0)
 
 #define DEFAULT_WINDOW_PAGE 10      /* bank 5 low half, normally at 0x4000 */
 

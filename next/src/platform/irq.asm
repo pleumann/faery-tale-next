@@ -27,13 +27,41 @@ _irq_init:
         ei
         ret
 
+        EXTERN  _music_isr
+        EXTERN  _crit
+
 isr:
         push    af
+        push    bc
+        push    de
+        push    hl
+        push    ix
+        push    iy
+        ex      af,af'
+        push    af
+        exx
+        push    bc
+        push    de
         push    hl
         ld      hl,(_frames)
         inc     hl
         ld      (_frames),hl
+        ld      hl,_crit                ; inside the ISR nothing may enable interrupts
+        inc     (hl)
+        call    _music_isr
+        ld      hl,_crit
+        dec     (hl)
         pop     hl
+        pop     de
+        pop     bc
+        exx
+        pop     af
+        ex      af,af'
+        pop     iy
+        pop     ix
+        pop     hl
+        pop     de
+        pop     bc
         pop     af
         ei
         reti
