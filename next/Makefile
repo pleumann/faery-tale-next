@@ -1,6 +1,6 @@
 # The Faery Tale Adventure - ZX Spectrum Next port
 #
-#   make           build assets and fta.nex into build/sd
+#   make -j8       build assets and fta.nex into build/sd (only what changed)
 #   make run       start in CSpect with build/sd as SD card root
 #   make clean
 
@@ -17,32 +17,42 @@ ZCC      := zcc
 ZFLAGS   := +zxn -vn -SO3 -clib=sdcc_iy -startup=31 --max-allocs-per-node20000 \
             -pragma-include:src/zpragma.inc -I$(GEN)
 
+ASSETS   := $(SD)/FTA/TILES.DAT
+
+# resident code (MMU slots 4-7, 0x8000-0xFCFF)
 SRCS     := src/main.c src/platform/hw.c src/platform/layer2.c src/platform/files.c \
             src/platform/input.c src/platform/irq.asm \
             src/game/world.c src/game/view.c src/game/actors.c \
             src/game/state.c src/game/shapes.c src/game/glue.c src/game/ui.c
+OBJS     := $(patsubst src/%,$(BUILD)/obj/%.o,$(basename $(SRCS)))
 
 # banked modules: file -> 8K page (org 0x0000, run in MMU slot 0, see platform/bank.h)
 BANKED   := logic:80 doors:81 objects:82 move:83 sprites:84 combat:85 menus:86 audio:87
-BANK_OBJS := $(foreach b,$(BANKED),$(BUILD)/obj/$(word 1,$(subst :, ,$(b))).o)
+BANK_OBJS := $(foreach b,$(BANKED),$(BUILD)/obj/bank/$(word 1,$(subst :, ,$(b))).o)
+$(foreach b,$(BANKED),$(eval PAGE_$(word 1,$(subst :, ,$(b))) := $(word 2,$(subst :, ,$(b)))))
 
-HEADERS  := $(wildcard src/*.h src/*/*.h) src/zpragma.inc $(GEN)/narr.h
-
-ASSETS   := $(SD)/FTA/TILES.DAT
+# every object depends on all headers (simple and safe; each file compiles in seconds)
+HEADERS  := $(wildcard src/*.h src/*/*.h) src/zpragma.inc $(GEN)/narr.h $(ASSETS)
 
 all: $(SD)/fta.nex
 
 assets: $(ASSETS)
 
-$(BUILD)/obj/%.o: src/game/%.c $(HEADERS) $(ASSETS)
-	@mkdir -p $(BUILD)/obj
+$(BUILD)/obj/%.o: src/%.c $(HEADERS)
+	@mkdir -p $(dir $@)
+	$(ZCC) $(ZFLAGS) -c $< -o $@
+
+$(BUILD)/obj/%.o: src/%.asm
+	@mkdir -p $(dir $@)
+	$(ZCC) $(ZFLAGS) -c $< -o $@
+
+$(BUILD)/obj/bank/%.o: src/game/%.c $(HEADERS)
+	@mkdir -p $(dir $@)
 	$(ZCC) $(ZFLAGS) -c $< -o $@ --codesegPAGE_$(PAGE_$*) --constsegPAGE_$(PAGE_$*)
 
-$(foreach b,$(BANKED),$(eval PAGE_$(word 1,$(subst :, ,$(b))) := $(word 2,$(subst :, ,$(b)))))
-
-$(SD)/fta.nex: $(SRCS) $(BANK_OBJS) $(ASSETS) $(HEADERS)
-	@mkdir -p $(BUILD)/obj $(SD)
-	$(ZCC) $(ZFLAGS) $(SRCS) $(BANK_OBJS) -o $(BUILD)/obj/fta -m -subtype=nex -create-app
+$(SD)/fta.nex: $(OBJS) $(BANK_OBJS)
+	@mkdir -p $(SD)
+	$(ZCC) $(ZFLAGS) $(OBJS) $(BANK_OBJS) -o $(BUILD)/obj/fta -m -subtype=nex -create-app
 	cp $(BUILD)/obj/fta.nex $@
 	@grep -E "^__BSS_END_tail|^__code_user_tail" $(BUILD)/obj/fta.map
 
