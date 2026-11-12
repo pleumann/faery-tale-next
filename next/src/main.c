@@ -121,7 +121,7 @@ void main(void)
     pointer_init();
 
     for (;;) {                          /* one game per pass */
-#if defined(DEMO) || defined(TEST_DOOR) || defined(TEST_KEYS) || defined(DEBUG_DUMP)
+#if defined(DEMO) || defined(TEST_DOOR) || defined(TEST_KEYS) || defined(DEBUG_DUMP) || defined(TEST_FEATURES)
     demo_on = 1;
 #else
     demo_on = 0;
@@ -222,6 +222,15 @@ void main(void)
         {
             static uint8_t oldir = 0xFF;
             uint8_t key = input_key();
+#ifdef TEST_FEATURES
+            /* scripted checks: magic map, then the witch's tower */
+            { static uint16_t loops; loops++;
+              if (loops == 2) { stuff[13] = 3; stuff[7] = 1; set_options(); }
+              if (loops == 30) key = 14;         /* SYMBOL SHIFT + 5: bird totem = map */
+              if (loops == 120) key = 'X';
+              if (loops == 140) { new_region = 8; xfer(11013, 36804 + 60, FALSE); find_place(2); }
+            }
+#endif
 #ifdef TEST_KEYS
             /* scripted key presses for automated checks: Items/List, then any key */
             { static uint16_t loops; loops++;

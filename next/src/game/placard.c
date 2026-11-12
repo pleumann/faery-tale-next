@@ -240,7 +240,7 @@ void placard_clear_b(void)
 void bigdraw_b(void)
 {
     int16_t secx, secy, px, py;
-    uint8_t si, sj, tx, ty, sec, tile, col;
+    uint8_t si, sj, tx, ty, sec;
 
     sprites_hide();
     view_clear();
@@ -257,27 +257,45 @@ void bigdraw_b(void)
     if (secy < 0) secy = 0;
     if (secy > 32 - 9) secy = 32 - 9;
 
-    for (sj = 0; sj < 9; sj++) {
-        for (si = 0; si < 18; si++) {
-            mmu_set(1, MAP_PAGE);
-            sec = SLOT1[(uint16_t)(secy + sj) * 128 + xreg + secx + si];
-            for (ty = 0; ty < 8; ty++) {
+    {
+        static uint8_t colors[256];         /* map colour per tile (terrain byte 3) */
+        static uint8_t secs[9 * 18];
+        uint8_t dpage = 0xFF, spage = 0xFF;
+        uint16_t i;
+        mmu_set(1, MAP_PAGE);
+        for (i = 0; i < 256; i++)
+            colors[i] = SLOT1[MAP_TERRA_OFF + (i << 2) + 3] & 31;
+        for (sj = 0; sj < 9; sj++)
+            for (si = 0; si < 18; si++)
+                secs[sj * 18 + si] = SLOT1[(uint16_t)(secy + sj) * 128 + xreg + secx + si];
+        for (sj = 0; sj < 9; sj++) {
+            for (si = 0; si < 18; si++) {
+                uint16_t soff;
+                sec = secs[sj * 18 + si];
+                soff = (uint16_t)sec << 7;
+                if (spage != SECTOR_PAGE + (soff >> 13)) {
+                    spage = SECTOR_PAGE + (soff >> 13);
+                    mmu_set(1, spage);
+                }
                 for (tx = 0; tx < 16; tx++) {
-                    uint16_t off = ((uint16_t)sec << 7) + (ty << 4) + tx;
-                    mmu_set(1, SECTOR_PAGE + (off >> 13));
-                    tile = SLOT1[off & 0x1FFF];
-                    mmu_set(1, MAP_PAGE);
-                    col = SLOT1[MAP_TERRA_OFF + ((uint16_t)tile << 2) + 3] & 31;
-                    px = si * 16 + tx;
-                    py = sj * 16 + ty * 2;
-                    l2_pixel(px, py, col);
-                    l2_pixel(px, py + 1, col);
+                    /* one Layer 2 column per tile column: playfield x -> buffer x */
+                    uint16_t bx = VIEW_X + si * 16 + tx;
+                    uint8_t *col;
+                    if (dpage != L2_PAGE_A + (bx >> 5)) {
+                        dpage = L2_PAGE_A + (bx >> 5);
+                        mmu_set(3, dpage);
+                    }
+                    col = L2W + ((bx & 31) << 8) + VIEW_Y + sj * 16;
+                    for (ty = 0; ty < 8; ty++) {
+                        col[0] = col[1] = colors[SLOT1[(soff & 0x1FFF) + (ty << 4) + tx]];
+                        col += 2;
+                    }
                 }
             }
         }
+        mmu_set(1, 0xFF);
+        mmu_set(3, 11);
     }
-    mmu_set(1, 0xFF);
-    mmu_set(3, 11);
 
     /* the hero's position */
     pen_x = (int16_t)(hero_x >> 4) - ((secx + xreg) << 4) - 4;

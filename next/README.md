@@ -63,7 +63,7 @@ summoned and he fights when one comes close. Any key ends the demo.
 | SYMBOL SHIFT + 1–7 | magic items (Amiga F1–F7) |
 | SYMBOL SHIFT + D | summon ogres (test) |
 
-Builds with `-DTEST_DOOR` start on a door threshold, `-DTEST_KEYS` presses keys by
+Builds with `-DTEST_FEATURES` show the magic map and visit the witch, `-DTEST_REGION` walks across a region border, `-DTEST_DOOR` start on a door threshold, `-DTEST_KEYS` presses keys by
 script, `-DDEBUG_DUMP` writes the actor list for 60 frames to DEBUG.BIN.
 
 ## Layout
