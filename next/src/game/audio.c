@@ -18,6 +18,11 @@
 #define MUSIC_PAGE  76                  /* MUSIC.DAT, 2 pages */
 #define SLOT1       ((uint8_t *)0x2000)
 
+/* octaves the bass voice is raised on the AY (0 = original pitch, 40-100 Hz hums) */
+#ifndef BASS_OCTAVE
+#define BASS_OCTAVE 1
+#endif
+
 #define AY_REG      0xFFFD
 #define AY_DATA     0xBFFD
 
@@ -195,7 +200,7 @@ newnote:
         if (v == 3) {
             /* buzzer bass: sawtooth from the envelope generator (shape 8 = repeating ramp
                down), like the Amiga's sawtooth-like waveform 0 */
-            uint16_t ep = mw(MUSIC_OFF_ENVPER + (uint16_t)cmd * 2) >> wave_octave[vc->wave_num & 7];
+            uint16_t ep = mw(MUSIC_OFF_ENVPER + (uint16_t)cmd * 2) >> (wave_octave[vc->wave_num & 7] + BASS_OCTAVE);
             ay_select(1);
             ay(11, (uint8_t)ep);
             ay(12, (uint8_t)(ep >> 8));

@@ -16,6 +16,7 @@ VOL_AY = [0, 3, 5, 6, 7, 8, 8, 9, 9, 10, 10, 10, 10, 11, 11, 11,
           11, 11, 11, 12, 12, 12, 12, 12, 12, 12, 12, 13, 13, 13, 13, 13,
           13, 13, 13, 13, 13, 13, 13, 14, 14, 14, 14, 14, 14, 14, 14, 14,
           14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15]
+BASS_OCTAVE = 1      # keep in sync with src/game/audio.c
 WAVE_OCTAVE = [0, 0, 0, 2, 0, 1, 0, 0]
 SONGS = ["day", "battle", "night", "intro", "astral", "indoor", "death"]
 OFF_PERIODS, OFF_NOTEVALS, OFF_ENV = 56, 224, 1376
@@ -86,6 +87,8 @@ def render(data, off, seconds, indoor_dungeon=False):
             for v, vc in enumerate(voices):
                 if vc["vol"] and vc["period"]:
                     f = AY_CLOCK / (16 * vc["period"])
+                    if v == 3:
+                        f *= 2 ** BASS_OCTAVE
                     phases[v] = (phases[v] + f / RATE) % 1.0
                     if v == 3:      # buzzer bass: envelope sawtooth (shape 8), full level
                         s += 1 - 2 * phases[v]
