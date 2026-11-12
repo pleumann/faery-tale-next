@@ -209,3 +209,40 @@ uint16_t world_hero_sector(uint16_t x, uint16_t y)
         sec += 256;
     return sec;
 }
+
+/* fsubs.asm _mapxy: the tile byte at tile coordinates, readable and writable (doors) */
+static uint16_t mapxy_off(uint16_t imx, uint16_t imy)
+{
+    int16_t xs, ys;
+    uint8_t sec;
+    xs = (int16_t)(imx >> 4) - (int16_t)xreg;
+    if (xs & 64) xs = (xs & 32) ? 0 : 63;
+    ys = (int16_t)(imy >> 3) - (int16_t)yreg;
+    if (ys & 32) ys = (ys & 16) ? 0 : 31;
+    mmu_set(1, MAP_PAGE);
+    sec = SLOT1[((uint16_t)ys << 7) + (uint16_t)xs + xreg];
+    return ((uint16_t)sec << 7) + ((imy & 7) << 4) + (imx & 15);
+}
+
+uint8_t mapxy_get(uint16_t imx, uint16_t imy)
+{
+    uint16_t off = mapxy_off(imx, imy);
+    uint8_t v;
+    mmu_set(1, SECTOR_PAGE + (off >> 13));
+    v = SLOT1[off & 0x1FFF];
+    mmu_set(1, 0xFF);
+    return v;
+}
+
+void mapxy_set(uint16_t imx, uint16_t imy, uint8_t v)
+{
+    uint16_t off = mapxy_off(imx, imy);
+    mmu_set(1, SECTOR_PAGE + (off >> 13));
+    SLOT1[off & 0x1FFF] = v;
+    mmu_set(1, 0xFF);
+}
+
+uint16_t world_image_block(uint8_t i)
+{
+    return current_loads.image[i];
+}

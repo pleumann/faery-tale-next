@@ -15,19 +15,27 @@ make run      # starts CSpect with build/sd as SD card root
 On real hardware copy the contents of `build/sd` (fta.nex and the FTA folder) to the same
 directory on the SD card and start fta.nex. Data paths are relative to that directory.
 
-## Current state (M3: hero)
+## Current state (M4: game logic)
 
-Julian walks through the world as a hardware sprite (two 16x16 sprites, patterns
-double buffered), with the original collision (`prox`/`proxcheck`), deflection around
-obstacles, terrain effects (wading, sinking, ice) and occlusion behind trees and
-buildings via the shadow masks. The camera follows like `map_adjust`. The game loop
-runs at 25 Hz. Without input Julian walks a short demo path.
+The game logic of `fmain.c`/`fmain2.c` runs: all actor types (hero, enemies, set
+figures, objects, raft, carriers, dragon), enemy AI (goals/tactics), melee and missiles,
+death and revival, random and placed encounters, objects in the world, doors to the
+interiors (including locked doors), beds, day/night cycle with palette fades, hunger and
+fatigue. Text output, menus and sound are still stubs (M5/M6).
+
+Without input Julian starts at the stone ring east of the village, a band of ogres is
+summoned and he fights when one comes close.
 
 | Key | Action |
 |---|---|
 | Q/A/O/P, cursor keys (5–8), Kempston joystick | walk (8 directions) |
-| R | back to the start village |
-| I / K | indoor map with building / dungeon tiles |
+| SPACE / fire | fight (bow: aim while held, shoot on release) |
+| D | summon ogres (test) |
+
+Building with `-DTEST_DOOR` starts on the threshold of a village house instead.
+
+Note: the resident area (0x8000–0xFCFF) is nearly full; further modules go into
+banked pages (see `src/platform/bank.h`).
 
 ## Layout
 
@@ -39,7 +47,7 @@ runs at 25 Hz. Without input Julian walks a short demo path.
 
 | Slot | Address | Use |
 |---|---|---|
-| MMU0–1 | 0000–3FFF | ROM (needed for esxDOS calls); later banked code |
+| MMU0 | 0000–1FFF | banked code pages 80–82 (logic, doors, objects); ROM during esxDOS calls |
 | MMU1 | 2000–3FFF | temporarily: map/sector lookups (ROM restored afterwards) |
 | MMU2 | 4000–5FFF | data window for paged assets |
 | MMU3 | 6000–7FFF | Layer 2 write window |

@@ -5,3 +5,6 @@
 #pragma output CLIB_MALLOC_HEAP_SIZE = 0
 #pragma output CLIB_STDIO_HEAP_SIZE = 0
 #pragma output CLIB_EXIT_STACK_SIZE = 0
+#pragma output CRT_ORG_PAGE_80 = 0x0000
+#pragma output CRT_ORG_PAGE_81 = 0x0000
+#pragma output CRT_ORG_PAGE_82 = 0x0000

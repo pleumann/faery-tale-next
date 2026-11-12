@@ -35,6 +35,11 @@ extern uint16_t hero_sector;
 /* Terrain type at world pixel (x, y), 0 if not solid there - like _px_to_im */
 uint8_t px_to_im(uint16_t x, uint16_t y);
 
+/* Tile byte at tile coordinates (fsubs.asm _mapxy) - doors change the map */
+uint8_t mapxy_get(uint16_t imx, uint16_t imy);
+void mapxy_set(uint16_t imx, uint16_t imy, uint8_t v);
+uint16_t world_image_block(uint8_t i);      /* disk block of loaded tile bank i */
+
 /* Camera follows (x, y) with the original dead zone - like _map_adjust */
 void map_adjust(uint16_t x, uint16_t y);
 

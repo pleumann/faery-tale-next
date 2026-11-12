@@ -14,12 +14,19 @@ CSPECT   ?= $(HOME)/Retro/CSpect4_5_1_0/CSpect.exe
 PYTHON   ?= python3 -I
 
 ZCC      := zcc
-ZFLAGS   := +zxn -vn -SO3 -clib=sdcc_iy -startup=31 --max-allocs-per-node200000 \
+ZFLAGS   := +zxn -vn -SO3 -clib=sdcc_iy -startup=31 --max-allocs-per-node20000 \
             -pragma-include:src/zpragma.inc -I$(GEN)
 
 SRCS     := src/main.c src/platform/hw.c src/platform/layer2.c src/platform/files.c \
             src/platform/input.c src/platform/irq.asm \
-            src/game/world.c src/game/view.c src/game/actors.c src/game/sprites.c
+            src/game/world.c src/game/view.c src/game/actors.c src/game/sprites.c \
+            src/game/state.c src/game/shapes.c src/game/glue.c
+
+# banked modules: file -> 8K page (org 0x0000, run in MMU slot 0, see platform/bank.h)
+BANKED   := logic:80 doors:81 objects:82
+BANK_OBJS := $(foreach b,$(BANKED),$(BUILD)/obj/$(word 1,$(subst :, ,$(b))).o)
+
+HEADERS  := $(wildcard src/*.h src/*/*.h) src/zpragma.inc
 
 ASSETS   := $(SD)/FTA/TILES.DAT
 
@@ -27,10 +34,17 @@ all: $(SD)/fta.nex
 
 assets: $(ASSETS)
 
-$(SD)/fta.nex: $(SRCS) $(ASSETS) $(wildcard src/*.h src/*/*.h) src/zpragma.inc
+$(BUILD)/obj/%.o: src/game/%.c $(HEADERS) $(ASSETS)
+	@mkdir -p $(BUILD)/obj
+	$(ZCC) $(ZFLAGS) -c $< -o $@ --codesegPAGE_$(PAGE_$*) --constsegPAGE_$(PAGE_$*)
+
+$(foreach b,$(BANKED),$(eval PAGE_$(word 1,$(subst :, ,$(b))) := $(word 2,$(subst :, ,$(b)))))
+
+$(SD)/fta.nex: $(SRCS) $(BANK_OBJS) $(ASSETS) $(HEADERS)
 	@mkdir -p $(BUILD)/obj $(SD)
-	$(ZCC) $(ZFLAGS) $(SRCS) -o $(BUILD)/obj/fta -m -subtype=nex -create-app
+	$(ZCC) $(ZFLAGS) $(SRCS) $(BANK_OBJS) -o $(BUILD)/obj/fta -m -subtype=nex -create-app
 	cp $(BUILD)/obj/fta.nex $@
+	@grep -E "^__BSS_END_tail|^__code_user_tail" $(BUILD)/obj/fta.map
 
 $(ASSETS): tools/*.py $(wildcard $(GAME)/*) ../narr.asm
 	$(PYTHON) tools/convert.py $(GAME) $(SD) $(PREVIEW) $(GEN)

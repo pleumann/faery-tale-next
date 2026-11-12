@@ -31,9 +31,10 @@
 
 #define DIR_NONE    9
 
-/* struct shape (ftale.h); field order kept, layout is not relied upon */
+/* struct shape (ftale.h) */
 struct shape {
-    uint16_t abs_x, abs_y, rel_x, rel_y;
+    uint16_t abs_x, abs_y;
+    int16_t rel_x, rel_y;
     int8_t  type;
     uint8_t race;
     int8_t  index, visible, weapon, environ, goal, tactic, state, facing;
@@ -53,13 +54,20 @@ extern uint8_t cycle;           /* main loop counter */
 extern uint16_t hero_x, hero_y;
 extern const struct state statelist[87];
 extern const int8_t diroffs[16];
+extern const int8_t bow_x[32], bow_y[32];
 
-uint16_t newx(uint16_t x, uint8_t dir, int8_t speed);
-uint16_t newy(uint16_t y, uint8_t dir, int8_t speed);
+uint16_t newx(uint16_t x, uint8_t dir, int16_t speed);
+uint16_t newy(uint16_t y, uint8_t dir, int16_t speed);
 uint8_t proxcheck(uint16_t x, uint16_t y, uint8_t i);
+uint8_t move_figure(uint8_t fig, uint8_t dir, int8_t dist);
+int16_t calc_dist(uint8_t a, uint8_t b);
+void set_course(uint8_t object, uint16_t target_x, uint16_t target_y, uint8_t mode);
+void dohit(int8_t i, uint8_t j, uint8_t fc, int16_t wt);
+void checkdead(uint8_t i, uint8_t dtype);
 
-void actors_init_hero(uint16_t x, uint16_t y);
-void hero_input(uint8_t dir);   /* dir 0..7 or DIR_NONE */
-void actors_update(void);
+void hero_control(uint8_t dir, uint8_t fire);   /* fmain.c:1384-1452 */
+void actors_update(void);                       /* fmain.c:1466-1865 */
+void combat_update(void);                       /* melee + missiles, fmain.c:2238-2301 */
+void actors_sort(void);                         /* missiles as objects, depth sort */
 
 #endif
