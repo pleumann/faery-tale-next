@@ -112,6 +112,7 @@ void main(void)
 
     ui_init();
     audio_init();
+    file_idle_hook = audio_update;
     font_load();
     pointer_init();
 

@@ -26,4 +26,7 @@ uint16_t file_read(uint8_t h, void *dst, uint16_t len);
 uint32_t file_load_pages(const char *name, uint8_t first_page);
 uint16_t file_load(const char *name, void *dst, uint16_t len);
 
+/* called between the pieces of long reads (e.g. to keep the music playing) */
+extern void (*file_idle_hook)(void);
+
 #endif

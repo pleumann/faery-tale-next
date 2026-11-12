@@ -50,22 +50,33 @@ uint8_t file_seek(uint8_t h, uint32_t pos)
     return errno;
 }
 
+void (*file_idle_hook)(void);
+
+/* Long reads go in 2K pieces; between them the idle hook keeps e.g. the music going. */
+#define CHUNK 2048
+
 uint32_t file_read_pages(uint8_t h, uint8_t first_page, uint32_t len)
 {
     uint32_t total = 0;
-    uint16_t want, n;
+    uint16_t want, n, off = 0;
 
     errno = 0;
     while (len) {
-        want = len > 8192 ? 8192 : (uint16_t)len;
-        mmu_set(WINDOW_SLOT, first_page++);
+        want = len > CHUNK ? CHUNK : (uint16_t)len;
+        mmu_set(WINDOW_SLOT, first_page);
         ROM_IN();
-        n = esx_f_read(h, WINDOW_ADDR, want);
+        n = esx_f_read(h, WINDOW_ADDR + off, want);
         ROM_OUT();
         total += n;
         len -= n;
+        off += n;
+        if (off == 8192) { off = 0; first_page++; }
         if (n != want || errno)
             break;
+        if (file_idle_hook) {
+            mmu_set(WINDOW_SLOT, DEFAULT_WINDOW_PAGE);
+            file_idle_hook();
+        }
     }
     mmu_set(WINDOW_SLOT, DEFAULT_WINDOW_PAGE);
     return total;

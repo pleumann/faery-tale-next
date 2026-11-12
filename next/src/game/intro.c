@@ -86,6 +86,8 @@ static void fullscreen(void)
 
 /* unpackbrush(name, page, x bytes, y) onto the Layer 2 picture. The brush is row-major,
    Layer 2 column-major: map the source page per row, the target page per 32 columns. */
+static uint8_t l2_base = L2_PAGE_A;     /* buffer the brushes are drawn into */
+
 static void brush(const char *name, uint16_t x, uint8_t y)
 {
     uint16_t w, h, r, c, off = 4;
@@ -106,7 +108,7 @@ static void brush(const char *name, uint16_t x, uint8_t y)
             }
             if ((uint8_t)(bx >> 5) != dpage) {
                 dpage = (uint8_t)(bx >> 5);
-                mmu_set(3, L2_PAGE_A + dpage);
+                mmu_set(3, l2_base + dpage);
             }
             src = SRC + (off & 0x1FFF);
             L2W[((bx & 31) << 8) + by] = *src;
@@ -114,6 +116,30 @@ static void brush(const char *name, uint16_t x, uint8_t y)
     }
     mmu_set(2, 10);
     mmu_set(3, 11);
+}
+
+/* Book pages: copy the visible picture into the hidden Layer 2 buffer, draw the new
+   brushes there, then show it at once (the Amiga used its two pages the same way). */
+static uint8_t shown_bank = L2_BANK_A;
+
+static void book_page(const char *a, const char *b, uint16_t bx, uint8_t by)
+{
+    uint8_t from = shown_bank * 2, to, i;
+    uint8_t back = (shown_bank == L2_BANK_A) ? L2_BANK_B : L2_BANK_A;
+    to = back * 2;
+    for (i = 0; i < 10; i++) {
+        mmu_set(2, from + i);
+        mmu_set(3, to + i);
+        memcpy(L2W, SRC, 8192);
+    }
+    mmu_set(2, 10);
+    mmu_set(3, 11);
+    l2_base = to;
+    brush(a, 32, 24);
+    brush(b, bx, by);
+    l2_base = L2_PAGE_A;
+    shown_bank = back;
+    layer2_show(back);
 }
 
 /* fmain.c:1155-1215 */
@@ -138,14 +164,16 @@ void intro_b(void)
     fade(introcolors, 1);
     if (wait_skip(100)) goto end;
     if (wait_skip(350)) goto end;
-    brush("FTA/P1A.BIN", 32, 24); brush("FTA/P1B.BIN", 21 * 8, 29);
+    book_page("FTA/P1A.BIN", "FTA/P1B.BIN", 21 * 8, 29);
     if (wait_skip(350)) goto end;
-    brush("FTA/P2A.BIN", 32, 24); brush("FTA/P2B.BIN", 20 * 8, 29);
+    book_page("FTA/P2A.BIN", "FTA/P2B.BIN", 20 * 8, 29);
     if (wait_skip(350)) goto end;
-    brush("FTA/P3A.BIN", 32, 24); brush("FTA/P3B.BIN", 20 * 8, 33);
+    book_page("FTA/P3A.BIN", "FTA/P3B.BIN", 20 * 8, 33);
     wait_skip(190);
 end:
     fade(introcolors, 0);
+    layer2_show(L2_BANK_A);             /* the game draws into buffer A */
+    shown_bank = L2_BANK_A;
     palette_load_rgb4(0, black, 32, 0);
     seed1 ^= frames;                    /* the original had no seed at all */
     view_clear();
