@@ -21,14 +21,14 @@ This repository contains two things side by side:
 
 | | |
 |---|---|
-| ![The intro book](docs/screenshots/book.png) | ![A placard](docs/screenshots/placard.png) |
-| The intro: the book of the three brothers | A placard in the game's own Amber font |
-| ![The village of Tambry](docs/screenshots/village.png) | ![The city of Marheim](docs/screenshots/city.png) |
-| Julian sets out from Tambry | The city of Marheim |
-| ![Fighting ogres](docs/screenshots/fight.png) | ![The king's castle](docs/screenshots/throne.png) |
-| A band of ogres at the stone ring | The throne room of King Mar |
-| ![The magic map](docs/screenshots/map.png) | |
-| The magic map of the bird totem | |
+| ![The title screen](docs/screenshots/title.png) | ![The intro book](docs/screenshots/book.png) |
+| The title screen | The intro: the book of the three brothers |
+| ![A placard](docs/screenshots/placard.png) | ![The village of Tambry](docs/screenshots/village.png) |
+| A placard in the game's own Amber font | Julian sets out from Tambry |
+| ![The city of Marheim](docs/screenshots/city.png) | ![Fighting ogres](docs/screenshots/fight.png) |
+| The city of Marheim | A band of ogres at the stone ring |
+| ![The king's castle](docs/screenshots/throne.png) | ![The magic map](docs/screenshots/map.png) |
+| The throne room of King Mar | The magic map of the bird totem |
 
 Building needs [z88dk](https://z88dk.org) and Python 3:
 
