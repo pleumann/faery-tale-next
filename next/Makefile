@@ -4,7 +4,8 @@
 #   make run       start in CSpect with build/sd as SD card root
 #   make clean
 
-GAME     := ../game
+ORIG     := ../orig
+GAME     := $(ORIG)/game
 BUILD    := build
 SD       := $(BUILD)/sd
 PREVIEW  := $(BUILD)/preview
@@ -86,10 +87,10 @@ $(SD)/fta.nex: $(OBJS) $(BANK_OBJS)
 	cp $(BUILD)/obj/fta.nex $@
 	@grep -E "^__BSS_END_tail|^__code_user_tail" $(BUILD)/obj/fta.map
 
-$(ASSETS): tools/*.py $(wildcard $(GAME)/*) ../narr.asm
+$(ASSETS): tools/*.py $(wildcard $(GAME)/*) $(ORIG)/narr.asm
 	$(PYTHON) tools/convert.py $(GAME) $(SD) $(PREVIEW) $(GEN)
 
-$(GEN)/narr.h: ../narr.asm tools/narr2c.py
+$(GEN)/narr.h: $(ORIG)/narr.asm tools/narr2c.py
 	@mkdir -p $(SD)/FTA
 	$(PYTHON) tools/narr2c.py $< $(GEN) $(SD)/FTA/NARR.DAT
 
