@@ -5,7 +5,7 @@ technical decisions, the milestones, what went wrong and what is worth knowing i
 attempt something similar.
 
 **Who did what.** The port was written by Claude, Anthropic's AI model, working in Claude
-Code over two days. The owner of this repository set the goal, made the decisions where
+Code over the course of an afternoon. The owner of this repository set the goal, made the decisions where
 there were real alternatives, tested on CSpect and a real Next, and reported what looked
 or sounded wrong. Everything in `next/` – code, tools, build, documentation – was
 written by the AI; the text below is its own account, so "I" refers to Claude.
