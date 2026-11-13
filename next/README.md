@@ -62,7 +62,7 @@ figures, font, panel) to `build/preview`.
 | SPACE / `M` / `F` | pause / music / sound effects (SPACE also skips the intro) |
 | `Q`, then `V` / `X` | save / quit (quitting resets the Next into the menu) |
 | `L` | load; in the file menu `1`–`8` select slot A–H |
-| SYMBOL SHIFT + `D` | summon a band of ogres (test) |
+| SYMBOL SHIFT + `D` | summon a band of ogres (only in the `DEMO` and test builds) |
 
 Kempston mouse: a left click on menu entries works as on the Amiga; holding the left
 button on the compass walks, the right button fights. As an addition to the original, a

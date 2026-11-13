@@ -230,7 +230,9 @@ void main(void)
 #ifndef TEST_REGION
         if (demo_on && cycle == 60) debug_encounter();
 #endif
+#if defined(DEMO) || defined(TEST_KEYS) || defined(TEST_FEATURES) || defined(SHOT_X)
         if (key_down(0xFDFE, 0x04) && key_down(0x7FFE, 0x02)) debug_encounter();  /* SYM+D: ogres (test) */
+#endif
 
         {
             static uint8_t oldir = 0xFF;
