@@ -18,9 +18,10 @@
 #define MUSIC_PAGE  76                  /* MUSIC.DAT, 2 pages */
 #define SLOT1       ((uint8_t *)0x2000)
 
-/* octaves the bass voice is raised on the AY (0 = original pitch, 40-100 Hz hums) */
+/* octaves the bass voice is raised on the AY (0 = original pitch, the default since the
+   music data are read correctly) */
 #ifndef BASS_OCTAVE
-#define BASS_OCTAVE 1
+#define BASS_OCTAVE 0
 #endif
 
 #define AY_REG      0xFFFD

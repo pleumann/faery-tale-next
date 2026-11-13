@@ -16,7 +16,7 @@ VOL_AY = [0, 3, 5, 6, 7, 8, 8, 9, 9, 10, 10, 10, 10, 11, 11, 11,
           11, 11, 11, 12, 12, 12, 12, 12, 12, 12, 12, 13, 13, 13, 13, 13,
           13, 13, 13, 13, 13, 13, 13, 14, 14, 14, 14, 14, 14, 14, 14, 14,
           14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15]
-BASS_OCTAVE = 1      # keep in sync with src/game/audio.c
+BASS_OCTAVE = 0      # keep in sync with src/game/audio.c
 WAVE_OCTAVE = [0, 0, 0, 2, 0, 1, 0, 0]
 SONGS = ["day", "battle", "night", "intro", "astral", "indoor", "death"]
 OFF_PERIODS, OFF_NOTEVALS, OFF_ENV = 56, 224, 1376

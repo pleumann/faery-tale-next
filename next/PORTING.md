@@ -188,7 +188,7 @@ the window is not found.
   area are 8 instead of 10 pixels apart; the title uses the Amber font instead of the
   ROM's topaz; the witch's gaze is drawn as an outline, not filled; the page turn in the
   intro is a cut, not the animated flip.
-- Music on the AY with square waves, bass one octave up; sound effects are the original
+- Music on the AY with square waves; sound effects are the original
   samples on the DAC.
 - Controls: cursor keys and `0` instead of the numeric keypad, SYMBOL SHIFT + 1–7
   instead of F1–F7, digit keys in submenus that were mouse-only on the Amiga, and – as an
