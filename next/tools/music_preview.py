@@ -40,7 +40,8 @@ def render(data, off, seconds, indoor_dungeon=False):
     out = bytearray()
     phases = [0.0] * 4
     for frame in range(seconds * 50):
-        clock += tempo
+        clock += tempo + tempo // 5             # 50 Hz frames at the NTSC tempo
+        env_tick = frame % 5 == 4               # every fifth frame: two envelope steps
         for v, vc in enumerate(voices):
             if not vc["ptr"]:
                 continue
@@ -81,6 +82,9 @@ def render(data, off, seconds, indoor_dungeon=False):
                 vol = data[vc["vl"]]
                 if vol < 0x80:
                     vc["vl"] += 1
+                    if env_tick and data[vc["vl"]] < 0x80:
+                        vol = data[vc["vl"]]
+                        vc["vl"] += 1
                     vc["vol"] = min(vol, 64)
         for _ in range(RATE // 50):
             s = 0.0

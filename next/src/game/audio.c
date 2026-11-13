@@ -1,6 +1,6 @@
 /* Banked module (PAGE_AUDIO): music and sound effects on the Next's AY chips.
 
-   The four-voice score player of gdriver.asm, driven once per 50 Hz frame:
+   The four-voice score player of gdriver.asm, driven once per frame interrupt:
    a tempo clock, SMUS-like note/rest/instrument/tempo events per voice and a volume
    envelope per note. Voices 0-2 play on AY 1 (channels A-C), voice 3 on AY 2 channel A.
    The Amiga's waveforms become plain AY square tones. Sound effects (Amiga: samples on
@@ -41,6 +41,8 @@ static uint16_t tempo = 150;
 static uint8_t playing;
 static uint8_t music_on = 1, sound_on = 1;
 static uint8_t cur_ay;
+static uint8_t hz60;                    /* video runs at 60 Hz (NTSC timing, as the Amiga original) */
+static uint8_t env_tick;
 
 /* fmain.c:669 - instrument per slot: high byte waveform, low byte envelope */
 static int16_t new_wave[12] = {
@@ -112,6 +114,7 @@ void audio_init_b(void)
     nextreg(0x08, nextreg_read(0x08) | 0x02 | 0x08);  /* turbosound: three AYs; DACs on */
     z80_outp(0xFFDF, 0x80);             /* DAC at the centre */
     cur_ay = 0xFF;
+    hz60 = (nextreg_read(0x05) & 0x04) != 0;
     for (i = 0; i < 2; i++) {
         ay_select(i);
         ay(7, i ? 0x1E : 0x38);         /* AY 1: tones A-C; AY 2: tone A, noise C */
@@ -209,6 +212,10 @@ newnote:
     vol = mb(vc->vol_list);
     if (vol & 0x80) return;                             /* negative: hold */
     vc->vol_list++;
+    if (env_tick == 4) {                                /* 50 Hz: 6 envelope steps in 5 frames */
+        uint8_t nv = mb(vc->vol_list);
+        if (!(nv & 0x80)) { vc->vol_list++; vol = nv; }
+    }
     set_volume(v, vol);
 }
 
@@ -220,11 +227,17 @@ static void fx_tick(void)
     ay(10, (uint8_t)((uint16_t)fx_left * 15 / fx_frames));
 }
 
-/* one 50 Hz frame */
+/* One frame. The game was made for NTSC Amigas: score and envelopes advance once per
+   60 Hz vertical blank. At 50 Hz the clock gets 6/5 of the tempo and every fifth frame
+   takes two envelope steps, so tempo and note shapes stay the same. */
 void audio_tick_b(void)
 {
     uint8_t v;
-    timeclock += tempo;
+    if (hz60) { timeclock += tempo; env_tick = 0; }
+    else {
+        timeclock += tempo + tempo / 5;
+        if (++env_tick > 4) env_tick = 0;
+    }
     if (playing && music_on)
         for (v = 0; v < 4; v++) dovoice(v);
     fx_tick();

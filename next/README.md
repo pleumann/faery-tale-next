@@ -38,6 +38,7 @@ make -j8 build/sd2m/fta.nex      # only the 2 MB build
 make run2m                       # start the 2 MB build in CSpect
 make run                         # start the 1 MB build in CSpect
 make music-preview               # render the songs as WAV (build/preview)
+python3 tools/amiga_music.py build/sd/FTA/MUSIC.DAT <dir>   # reference: as Paula plays them
 ```
 
 On the Next copy `build/sd2m/fta.nex` anywhere to the SD card (2 MB), or the contents of

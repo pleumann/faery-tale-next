@@ -150,12 +150,17 @@ lost that while restructuring, and nothing seemed wrong – until the owner noti
 hero being covered by a bridge: the bridge's occlusion rule depends on that sector. Place
 names, drowning in a particular sector and the stone ring teleport depended on it too.
 
-**The bass.** The music uses one sawtooth-like waveform for all voices; on the AY's
-square waves the bass (40–100 Hz) hummed and sounded "off". An envelope-generator
-"buzzer bass" was out of tune (the envelope generator can only be tuned coarsely). The
-current version plays the bass as a square wave one octave up. The pitch table is
-verified to match the Amiga's to within a few cents; whether it sounds right is still
-open.
+**The music.** For a long time the music sounded slow and somewhat off, and the bass
+in particular seemed out of tune. Attempts with an envelope-generator "buzzer bass" and a
+bass one octave up only treated the symptoms. The cause turned up when the owner of this
+repository compared the port with a longplay recording of the Amiga version and found it
+at least five times too slow: the pitch table in `MUSIC.DAT` had 78 entries, the layout
+reserved 84, so everything after it (note durations, waveforms, envelopes, track
+offsets) was read 12 bytes off. Durations came from the wrong table row, and each track
+lost its tempo command, its instrument and its first two notes. The converter now pads
+the table and checks the layout. `tools/amiga_music.py` renders the songs the way Paula
+plays them and served as the reference. The game was made for NTSC Amigas, so at 50 Hz
+the player advances the score at 6/5 of the tempo.
 
 **Frame rate.** With several enemies on screen the game stuttered. Profiling in scan
 lines showed the sprite composition taking two thirds of the budget; uploading patterns
@@ -198,7 +203,6 @@ the window is not found.
 - A side-by-side test against the original in a scriptable Amiga emulator: record seed,
   input and actor state per main loop iteration on the Amiga, replay them in the port
   and report the first difference.
-- The bass and the music in general, compared against a recording of the original.
 
 ## Credits
 

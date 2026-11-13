@@ -314,6 +314,8 @@ def convert_music(game, out):
         length = (32 - offset) * 2
         freq = gd.PAL_CLOCK / (period * length)
         periods.append(min(4095, round(gd.AY_CLOCK / (16 * freq))))
+    periods += [periods[-1]] * (84 - len(periods))     # the layout reserves 84 notes
+    assert len(periods) == 84 and len(gd.NOTEVALS) == 64
 
     # layout: 28 x u16 track offsets, 84 x u16 AY periods, 64 x u16 notevals,
     # waves (1024), envelopes (2560), track data
@@ -327,11 +329,13 @@ def convert_music(game, out):
             + b"".join(struct.pack("<H", p) for p in periods)
             + b"".join(struct.pack("<H", v) for v in gd.NOTEVALS)
             + waves + envelopes + body)
+    assert len(data) - len(body) == head, "MUSIC.DAT layout and offsets disagree"
     # AY envelope periods for a sawtooth "buzzer" bass (envelope shape 8): f = clock/(256*p)
     envper = bytearray()
     for period, offset in gd.PTABLE:
         freq = gd.PAL_CLOCK / (period * (32 - offset) * 2)
         envper += struct.pack("<H", min(65535, round(gd.AY_CLOCK / (256 * freq))))
+    envper += envper[-2:] * (84 - len(gd.PTABLE))
     out.define("MUSIC_OFF_ENVPER", len(data))
     data += envper
     out.file("MUSIC.DAT", data)
