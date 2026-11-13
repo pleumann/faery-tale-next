@@ -17,6 +17,19 @@ This repository contains two things side by side:
 - Builds as a single `fta.nex` for a Next with 2 MB, or as `fta.nex` plus a data folder
   for 1 MB.
 
+### Screenshots (ZX Spectrum Next, in CSpect)
+
+| | |
+|---|---|
+| ![The intro book](docs/screenshots/book.png) | ![A placard](docs/screenshots/placard.png) |
+| The intro: the book of the three brothers | A placard in the game's own Amber font |
+| ![The village of Tambry](docs/screenshots/village.png) | ![The city of Marheim](docs/screenshots/city.png) |
+| Julian sets out from Tambry | The city of Marheim |
+| ![Fighting ogres](docs/screenshots/fight.png) | ![The king's castle](docs/screenshots/throne.png) |
+| A band of ogres at the stone ring | The throne room of King Mar |
+| ![The magic map](docs/screenshots/map.png) | |
+| The magic map of the bird totem | |
+
 Building needs [z88dk](https://z88dk.org) and Python 3:
 
 ```
