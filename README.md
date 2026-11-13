@@ -48,6 +48,9 @@ Talin's statement on the copyright of the original code is in
 MIT-style permissive license, while the status of the rights held by the publisher's
 successors is unclear. The same applies to the game data the port converts.
 
+The code of the Next port itself (`next/`) is under the MIT license, see
+[`next/LICENSE`](next/LICENSE). This does not extend to the original code and data.
+
 ## Other forks
 
 Talin's README lists further forks of the original code, among them an SDL port and a
